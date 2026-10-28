@@ -52,5 +52,5 @@ jobs:
       - run: moon build --target all --deny-warn
       - run: moon fmt --check
       - run: node scripts/build.mjs
-      - run: node --test tests/cli.test.mjs
+      - run: node --test tests/cli.test.mjs tests/batch.test.mjs
       - run: python tests/oracle.py 500

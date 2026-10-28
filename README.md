@@ -12,7 +12,7 @@ WageKit 把"发工资要算的税"做成可验证的纯计算库：输入任职�
 | --- | --- |
 | 解决什么 | 发工资要算的税：累计预扣跨月跳档、年终奖临界点、到手反推应发、政策换版重算——每一条都直接对上钱 |
 | 谁用 | 招聘算 offer 税前 / 财务查每月预扣依据 / 薪酬系统评估换版成本 / 个人比较年终奖两种计税 |
-| 凭什么信 | 42 项单元测试 + 15 项 CLI 测试 + 3,000 组 Python `Decimal` 独立实现逐字段对照；`moon test` 一条命令跑完，不用装 Python 也能验边界 |
+| 凭什么信 | 42 项单元测试 + 21 项 Node 测试（CLI 15 + 批量 6） + 3,000 组 Python `Decimal` 独立实现逐字段对照；`moon test` 一条命令跑完，不用装 Python 也能验边界 |
 | 生态位置 | Mooncakes 现有 **3,390 个包**，薪酬/个税类 **0 个**（2026-10-29 全量检索）；金额表示只有 `haol-05/moonmoney`，不做计税 |
 | 怎么试 | **先开演示页**（`web/`，零依赖零网络）：五个场景一键切换，每个都有一句"该看什么" |
 
@@ -47,7 +47,7 @@ WageKit 把"发工资要算的税"做成可验证的纯计算库：输入任职�
 
 | 谁 | 问题 | 调用 |
 | --- | --- | --- |
-| 招聘 / HR | "offer 写 25,000 到手，税前该开多少？" | `gross_up` / JSON 的 `target_net` |
+| 招聘 / HR | "offer 写 25,000 到手，税前该开多少？"；"这 1,000 人本月的工资条" | `gross_up` / `bin/batch.mjs` |
 | 财务 | "这个月每个人的预扣为什么是这个数？" | `explain_withholding` / JSON 的 `explain` |
 | 薪酬系统 | "政策换版，全公司要多掏多少钱？" | `policy_impact` |
 | 个人 | "年终奖 36,000 还是 36,001 划算？" | `bonus_compare` |
@@ -98,12 +98,26 @@ node bin/wagekit.mjs /tmp/offer.json
  "tax_cum":408000,"withheld":220000,"formula":"66000.00 × 10% − 2520.00 = 4080.00"}
 ```
 
+### 7. 批量：一张表出全员工资条
+
+```sh
+node bin/batch.mjs examples/employees.csv --out payslips
+# 已生成 3 份工资条 → /path/to/payslips
+# 月度预扣个税合计 2836.00 元｜月实发合计 89864.00 元
+# 年终奖按单独计税合计 12870.00 元（是否更省见每份工资条的对比）
+```
+
+CSV 列：`name,gross,social,special,other,bonus`，金额单位是**元**（可带两位小数，超过两位直接报错，不静默截断）。每人生成一份 Markdown 工资条，终端打印合计；`--json` 输出机器可读汇总。
+
+实测 **1,000 人 0.44 秒**（含生成 1,000 个文件落盘），单机、无并发。
+
 ## 验证
 
 ```sh
 moon check --target all --deny-warn   # 四目标零警告
 moon test --deny-warn                 # 单元测试：临界点穷举、状态机不变量、舍入口径、反推往返
 node scripts/build.mjs
+node --test tests/cli.test.mjs tests/batch.test.mjs # 21 pass
 node bin/wagekit.mjs examples/months.json          # JSON 报告
 node bin/wagekit.mjs examples/months.json --md     # 全年工资条（Markdown）
 node bin/wagekit.mjs examples/explain-grossup.json # 税额分解 + 反推
@@ -116,7 +130,7 @@ oracle 的随机流固定覆盖**每一个税率跳档点**（年终奖按月度
 
 CI 在 Linux / macOS / Windows 上以 `--target all`（wasm / wasm-gc / js / native）执行以上全部检查。
 
-42 项单元测试 + 15 项 CLI 测试；每份报告都带 `rules` 字段（当前 `2026.1`），归档结果可追溯到确切的规则集。
+42 项单元测试 + 21 项 Node 测试（CLI 15 + 批量 6）；每份报告都带 `rules` 字段（当前 `2026.1`），归档结果可追溯到确切的规则集。
 
 ## 批量性能（可复现）
 
