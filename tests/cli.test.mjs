@@ -8,11 +8,11 @@ import {join, resolve} from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 const cli = resolve(root, 'bin/wagekit.mjs');
 
-function run(doc) {
+function run(doc, extra = []) {
   const dir = mkdtempSync(join(tmpdir(), 'wagekit-'));
   const file = join(dir, 'input.json');
   writeFileSync(file, JSON.stringify(doc));
-  return spawnSync(process.execPath, [cli, file], {encoding: 'utf8'});
+  return spawnSync(process.execPath, [cli, file, ...extra], {encoding: 'utf8'});
 }
 
 const threeMonths = {
@@ -56,4 +56,24 @@ test('invalid input exits with code 2', () => {
   const result = run({months: [{gross: 'not-a-number'}]});
   assert.equal(result.status, 2);
   assert.equal(JSON.parse(result.stdout).ok, false);
+});
+
+test('--md renders a full-year payslip',()=>{
+  const result=run(threeMonths,['--md']);
+  assert.equal(result.status,0);
+  assert.match(result.stdout,/WageKit 工资条（2026）/);
+  assert.match(result.stdout,/工资条 2026 年 3 月/);
+  assert.match(result.stdout,/年终奖计税方式对比/);
+});
+
+test('negative amounts are rejected at the wire',()=>{
+  const result=run({year:2026,months:[{gross:-100,social:0,special:0,other:0}]});
+  assert.equal(result.status,2);
+  assert.match(JSON.parse(result.stdout).error,/non-negative/);
+});
+
+test('out-of-range years are rejected',()=>{
+  const result=run({year:2200,months:[{gross:100,social:0,special:0,other:0}]});
+  assert.equal(result.status,2);
+  assert.match(JSON.parse(result.stdout).error,/2000\.\.2100/);
 });

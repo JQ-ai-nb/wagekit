@@ -69,23 +69,37 @@ fn required(fields : Map[String, Json], name : String) -> Json raise TaxError {
 ///|
 fn read_month(value : Json) -> MonthInput raise TaxError {
   let fields = j_obj(value, "month entry")
-  {
+  let input = {
     gross: j_cents(required(fields, "gross"), "gross"),
     social: j_cents(required(fields, "social"), "social"),
     special: j_cents(required(fields, "special"), "special"),
     other: j_cents(required(fields, "other"), "other"),
   }
+  if input.gross < 0L {
+    fail("gross must be non-negative")
+  }
+  if input.social < 0L {
+    fail("social must be non-negative")
+  }
+  if input.special < 0L {
+    fail("special must be non-negative")
+  }
+  if input.other < 0L {
+    fail("other must be non-negative")
+  }
+  input
 }
 
 ///|
-/// Compute the full report for a wire document:
-///
-/// ```json
-/// {"year":2026,"months":[{"gross":3000000,"social":0,"special":300000,"other":0}],"bonus":3600000}
-/// ```
-///
-/// All amounts are integer cents. `bonus` is optional.
-pub fn run_report(source : String) -> String raise TaxError {
+/// Parsed wire document shared by the JSON and Markdown entry points.
+pub(all) struct WireInput {
+  year : Int32
+  inputs : Array[MonthInput]
+  bonus : Int64?
+} derive(Eq)
+
+///|
+fn parse_input(source : String) -> WireInput raise TaxError {
   let document = @json.parse(
     source,
     max_nesting_depth=16,
@@ -99,7 +113,61 @@ pub fn run_report(source : String) -> String raise TaxError {
     Some(value) => j_int(value, "year")
     None => 2026
   }
+  if year < 2000 || year > 2100 {
+    fail("year must be within 2000..2100")
+  }
   let inputs = j_array(required(fields, "months"), "months").map(read_month)
+  let bonus = match fields.get("bonus") {
+    Some(value) => {
+      let b = j_cents(value, "bonus")
+      if b < 0L {
+        fail("bonus must be non-negative")
+      }
+      Some(b)
+    }
+    None => None
+  }
+  { year, inputs, bonus, }
+}
+
+///|
+/// Render a full-year payslip (Markdown) for the same wire document.
+pub fn run_payslip_report(source : String) -> String raise TaxError {
+  let input = parse_input(source)
+  let results = cumulative_withholding(input.inputs)
+  let buf = StringBuilder()
+  buf.write_string("# WageKit 工资条（\{input.year}）\n")
+  for r in results {
+    if r.month > 1 {
+      buf.write_string("\n---\n")
+    }
+    buf.write_string(
+      render_payslip(input.year, r.month, input.inputs[r.month - 1], r, ""),
+    )
+  }
+  match input.bonus {
+    Some(bonus) => {
+      let choice = bonus_compare(bonus, input.inputs)
+      buf.write_string("\n---\n\n")
+      buf.write_string(render_bonus_report(choice))
+    }
+    None => ()
+  }
+  buf.to_string()
+}
+
+///|
+/// Compute the full report for a wire document:
+///
+/// ```json
+/// {"year":2026,"months":[{"gross":3000000,"social":0,"special":300000,"other":0}],"bonus":3600000}
+/// ```
+///
+/// All amounts are integer cents. `bonus` is optional.
+pub fn run_report(source : String) -> String raise TaxError {
+  let input = parse_input(source)
+  let year = input.year
+  let inputs = input.inputs
   let results = cumulative_withholding(inputs)
   let buf = StringBuilder()
   buf.write_string("{\"ok\":true,\"year\":")
@@ -114,9 +182,8 @@ pub fn run_report(source : String) -> String raise TaxError {
     )
   }
   buf.write_string("],\"total_withheld\":\{total_withheld(results)}")
-  match fields.get("bonus") {
-    Some(value) => {
-      let bonus = j_cents(value, "bonus")
+  match input.bonus {
+    Some(bonus) => {
       let choice = bonus_compare(bonus, inputs)
       buf.write_string(
         ",\"bonus\":{\"amount\":\{bonus},\"standalone_tax\":\{choice.standalone_tax},\"combined_extra_tax\":\{choice.combined_extra_tax},\"best\":\"\{choice.best}\"}",

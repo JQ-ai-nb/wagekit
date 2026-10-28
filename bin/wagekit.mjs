@@ -12,12 +12,14 @@
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 
-const usage='Usage: node bin/wagekit.mjs <input.json>\nAll amounts are integer cents (1 yuan = 100 cents).\nExit: 0 ok; 2 invalid input.';
+const usage='Usage: node bin/wagekit.mjs <input.json> [--md]\nAll amounts are integer cents (1 yuan = 100 cents).\n--md renders a full-year payslip in Markdown instead of JSON.\nExit: 0 ok; 2 invalid input.';
 const args=process.argv.slice(2);
 if(args.length===1&&['-h','--help'].includes(args[0])){console.log(usage);process.exit(0);}
-if(args.length!==1){console.error(usage);process.exit(2);}
+const markdown=args.includes('--md');
+const positional=args.filter(a=>a!=='--md');
+if(positional.length!==1){console.error(usage);process.exit(2);}
 
-const inputPath=resolve(args[0]);
+const inputPath=resolve(positional[0]);
 let documentText;
 try{
   documentText=JSON.stringify(JSON.parse(readFileSync(inputPath,'utf8')));
@@ -27,6 +29,6 @@ try{
 }
 
 const core=await import('../dist/wagekit.js');
-const raw=core.run(documentText);
+const raw=markdown?core.run_payslip(documentText):core.run(documentText);
 console.log(raw);
-process.exitCode=raw.includes('"ok":true')?0:2;
+process.exitCode=markdown?(raw.startsWith('error:')?2:0):(raw.includes('"ok":true')?0:2);

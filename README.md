@@ -51,9 +51,12 @@ WageKit 把"发工资要算的税"做成可验证的纯计算库：输入任职�
 moon check --target all --deny-warn   # 四目标零警告
 moon test --deny-warn                 # 单元测试：临界点穷举、状态机不变量、舍入口径
 node scripts/build.mjs
-node bin/wagekit.mjs examples/months.json
+node bin/wagekit.mjs examples/months.json          # JSON 报告
+node bin/wagekit.mjs examples/months.json --md     # 全年工资条（Markdown）
 python tests/oracle.py 3000           # 独立 Decimal oracle，逐字段对比
 ```
+
+oracle 的随机流固定覆盖**每一个税率跳档点 ±1 分**（年终奖按月度表边界 ×12 的整除陷阱、年度表边界单月探针），边界正确性不靠抽样。
 
 CI 在 Linux / macOS / Windows 上以 `--target all`（wasm / wasm-gc / js / native）执行以上全部检查。
 

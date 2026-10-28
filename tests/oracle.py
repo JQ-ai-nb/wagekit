@@ -89,12 +89,42 @@ def _bonus_standalone(bonus: int) -> int:
     raise AssertionError("unreachable")
 
 
+# Fixed boundary bonuses: every monthly-table cliff (edge*12 + 12, where the
+# integer division of 12 first crosses the bracket) plus one fen below.
+EDGE_BONUS = []
+for _u, _r, _q in MONTHLY_TABLE[:-1]:
+    EDGE_BONUS.append(_u * 12)
+    EDGE_BONUS.append(_u * 12 + 12)
+    EDGE_BONUS.append(_u * 12 + 11)
+EDGE_BONUS = sorted(set(EDGE_BONUS))
+
+# Fixed single-month salaries that land the annual taxable base exactly on an
+# annual-table edge (±1 fen): the cumulative schedule must match the table.
+EDGE_SALARIES = []
+for _u, _r, _q in ANNUAL_TABLE[:-1]:
+    EDGE_SALARIES.append(_u)
+    EDGE_SALARIES.append(_u + 1)
+    EDGE_SALARIES.append(_u - 1)
+
+
 def _case(count: int) -> list[dict]:
     rng = random.Random(42)
     cases = []
     for _ in range(count):
         months = rng.randint(1, 12)
         entries = []
+        if rng.random() < 0.15:
+            # boundary probe: a single month whose taxable base sits on an edge
+            gross = rng.choice(EDGE_SALARIES) + 500_000
+            entries.append(
+                {
+                    "gross": gross,
+                    "social": 0,
+                    "special": 0,
+                    "other": 0,
+                }
+            )
+            months = 1
         for _ in range(months):
             gross = rng.randint(0, 8_000_000)
             entries.append(
@@ -107,20 +137,7 @@ def _case(count: int) -> list[dict]:
             )
         case = {"year": 2026, "months": entries}
         if rng.random() < 0.6:
-            case["bonus"] = rng.choice(
-                [
-                    rng.randint(0, 100_000),
-                    3_599_999,
-                    3_600_000,
-                    3_600_012,
-                    14_400_012,
-                    30_000_012,
-                    42_000_012,
-                    66_000_012,
-                    96_000_012,
-                    rng.randint(0, 20_000_000),
-                ]
-            )
+            case["bonus"] = rng.choice(EDGE_BONUS + [rng.randint(0, 20_000_000)])
         cases.append(case)
     return cases
 

@@ -9,6 +9,14 @@ pub fn run(source : String) -> String {
 }
 
 ///|
+/// Full-year payslip in Markdown: one slip per month plus the bonus report.
+pub fn run_payslip(source : String) -> String {
+  @wagekit.run_payslip_report(source) catch {
+    TaxError(message) => "error: \{message}"
+  }
+}
+
+///|
 /// Native/wasm builds need an entry point when `link` options are present.
 fn main {
   ()
