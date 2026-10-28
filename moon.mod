@@ -8,6 +8,6 @@ repository = "https://github.com/JQ-ai-nb/wagekit"
 
 license = "MIT"
 
-description = "Payroll and individual income tax engine for MoonBit: cumulative withholding, annual bonus traps, and penny-exact money."
+description = "Payroll and individual income tax engine for MoonBit: cumulative withholding, annual bonus traps, penny-exact money, auditable per-month breakdowns, and net-to-gross inversion."
 
 warnings = "-implicit_impl_as_method"

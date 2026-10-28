@@ -6,8 +6,18 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+
+# One run per ref: a second push cancels the first instead of queueing.
+concurrency:
+  group: "ci-${{ github.ref }}"
+  cancel-in-progress: true
+
 jobs:
   verify:
+    # Pinned so a toolchain release cannot turn the badge red between now and
+    # the submission deadline. Bump deliberately, together with the core.
+    env:
+      MOONBIT_INSTALL_VERSION: 0.1.20261021
     strategy:
       fail-fast: false
       matrix:
