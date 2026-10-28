@@ -145,6 +145,8 @@ pub fn run_payslip_report(source : String) -> String raise TaxError {
       render_payslip(input.year, r.month, input.inputs[r.month - 1], r, ""),
     )
   }
+  buf.write_string("\n---\n\n")
+  buf.write_string(render_year_summary(summarize(input.inputs, results)))
   match input.bonus {
     Some(bonus) => {
       let choice = bonus_compare(bonus, input.inputs)
