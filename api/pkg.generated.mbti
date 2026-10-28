@@ -4,6 +4,8 @@ package "JQ-ai-nb/wagekit/api"
 // Values
 pub fn run(String) -> String
 
+pub fn run_payslip(String) -> String
+
 // Errors
 
 // Types and methods
