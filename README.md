@@ -60,6 +60,17 @@ oracle 的随机流固定覆盖**每一个税率跳档点 ±1 分**（年终奖�
 
 CI 在 Linux / macOS / Windows 上以 `--target all`（wasm / wasm-gc / js / native）执行以上全部检查。
 
+24 项单元测试 + 8 项 CLI 测试；每份报告都带 `rules` 字段（当前 `2026.1`），归档结果可追溯到确切的规则集。
+
+## 批量性能（可复现）
+
+```sh
+node scripts/build.mjs
+node bench/bench.mjs 1000 5
+```
+
+1,000 名员工 × 12 个月，每人一份独立 JSON 文档，5 轮取中位：**18.6 ms**（每人 0.019 ms，每月 1.5 µs），Node 22 / Windows。数据在内存生成，不含磁盘与网络。
+
 ## 为什么不是 Excel 或在线计算器
 
 | 维度 | Excel / 在线计算器 | WageKit |

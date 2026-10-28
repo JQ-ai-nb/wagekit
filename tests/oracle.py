@@ -146,6 +146,7 @@ def _expected(case: dict) -> dict:
     results = _cumulative(case["months"])
     expected = {
         "ok": True,
+        "rules": "2026.1",
         "year": case.get("year", 2026),
         "months": results,
         "total_withheld": sum(r["withheld"] for r in results),

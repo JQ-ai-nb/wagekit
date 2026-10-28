@@ -44,6 +44,11 @@ implements formulas. This page is the audit surface.
 折算（≤4,000 减 800；>4,000 打八折）与三档预扣率（20/30/40%，速算
 0/2,000/7,000）定义于 `src/labor.mbt`。
 
+## 版本标记
+
+`RULES_VERSION`（`src/tax_table.mbt`）随每份 JSON 报告输出，例如 `"rules":"2026.1"`。
+任何表或常量变更都必须同时递增该版本号，历史归档才能唯一对应到一组规则。
+
 ## 变更协议（Change protocol）
 
 1. 修改数据表/常量；
