@@ -48,6 +48,8 @@ pub fn render_bonus_report(BonusChoice) -> String
 
 pub fn render_payslip(Int32, Int32, MonthInput, MonthResult, String) -> String
 
+pub fn run_payslip_report(String) -> String raise TaxError
+
 pub fn run_report(String) -> String raise TaxError
 
 pub fn tax_of(RateTable, Int64) -> Int64
@@ -116,6 +118,12 @@ pub(all) struct SpecialDeductions {
   elder_support : Int64
   continuing_education : Int64
   major_medical_monthly : Int64
+} derive(Eq)
+
+pub(all) struct WireInput {
+  year : Int32
+  inputs : Array[MonthInput]
+  bonus : Int64?
 } derive(Eq)
 
 // Type aliases
