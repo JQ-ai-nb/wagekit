@@ -22,9 +22,9 @@ WageKit 把"发工资要算的税"做成可验证的纯计算库：输入任职�
 
 ## 60 秒评审路径
 
-1. **看著名陷阱**：`moon test` 里的 `cliff sweep` 用例——年终奖 36,000 元缴税 1,080 元，36,000.01 元缴税 3,390.10 元，**多发一分钱到手少 2,309 元**；
+1. **看著名陷阱**：`moon test` 里的 `cliff sweep` 用例——年终奖 36,000 元缴税 1,080 元，36,001 元缴税 3,390.10 元，**多发一元，到手少 2,309.10 元**（精确跳档点在 36,000.12 元，测试按分穷举 6 档边界）；
 2. **跑独立 oracle**：`python tests/oracle.py 3000`——Python `Decimal` 按官方口径独立实现同一套规则，3,000 组随机工资逐字段对比；
-3. **生成工资条**：`node bin/wagekit.mjs examples/months.json`；
+3. **生成工资条**：`node bin/wagekit.mjs examples/months.json --md`，输出样张见 `examples/expected-output.md`；
 4. 想看与现有项目的关系：本 README「与现有项目的关系」。
 
 ## 三个完整用例
