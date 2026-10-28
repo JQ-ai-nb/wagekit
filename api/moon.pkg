@@ -1,0 +1,9 @@
+import {
+  "JQ-ai-nb/wagekit/src" @wagekit,
+}
+
+pkgtype(kind: "executable")
+
+options(
+  link: { "js": { "exports": [ "run" ], "format": "esm" } },
+)
