@@ -52,6 +52,15 @@
   th { color: var(--muted); font-weight: 600; background: #fafbfd; }
   th:last-child, td:last-child { text-align: left; white-space: normal; }
   td.mono { font-variant-numeric: tabular-nums; }
+  .presets { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: .2rem; }
+  .presets-label { font-size: .85rem; color: var(--muted); }
+  .chip {
+    margin: 0; padding: .3rem .8rem; font-size: .85rem; border-radius: 999px;
+    background: #eef3fd; color: var(--brand); border: 1px solid #cddcfb;
+    cursor: pointer; width: auto;
+  }
+  .chip:hover { background: #dde8fb; }
+  .chip:disabled { opacity: .5; cursor: wait; }
 </style>
 </head>
 <body>
@@ -63,6 +72,15 @@
   </p>
 
   <div class="card">
+    <div class="presets">
+      <span class="presets-label">看一个场景</span>
+      <button class="chip" data-preset="cliff">年终奖多发一元</button>
+      <button class="chip" data-preset="jump">跨月跳档</button>
+      <button class="chip" data-preset="offer">到手反推</button>
+      <button class="chip" data-preset="settlement">汇算退税</button>
+      <button class="chip" data-preset="policy">起征点试算</button>
+    </div>
+    <p id="presetnote" class="hint" style="margin:0 0 .2rem"></p>
     <div class="row">
       <div>
         <label>月度应发工资（元）</label>
@@ -151,7 +169,51 @@
 const yuan = (cents) => (cents / 100).toLocaleString("zh-CN", {minimumFractionDigits: 2});
 const toCents = (id) => Math.round(Number(document.getElementById(id).value || "0") * 100);
 
-document.getElementById("go").addEventListener("click", async () => {
+const PRESETS = {
+  cliff: {
+    values: {gross: "30000", social: "0", special: "3000", months: "12", bonus: "36001", target: "", other: "", otherpaid: ""},
+    preview: false,
+    note: "年终奖 36,001 元：单独计税 3,390.10 元，而 36,000 元只要 1,080 元。多领 1 元，税多缴 2,310.10 元、到手少 2,309.10 元。把年终奖改回 36000 再点一次即可对照。",
+  },
+  jump: {
+    values: {gross: "30000", social: "0", special: "3000", months: "3", bonus: "", target: "", other: "", otherpaid: ""},
+    preview: false,
+    note: "同样月薪，前 3 个月预扣 660 / 1,220 / 2,200 元——第 2 个月累计跨进 10% 档。逐月预扣之和恒等于期末累计税额，这是状态机，不是单月函数。",
+  },
+  offer: {
+    values: {gross: "30000", social: "0", special: "3000", months: "1", bonus: "", target: "20000", other: "", otherpaid: ""},
+    preview: false,
+    note: "承诺首月到手 20,000 元，反推税前应发 20,371.13 元——分毫不差。求逆要处理四舍五入造成的台阶，有些到手额根本取不到。",
+  },
+  settlement: {
+    values: {gross: "20000", social: "0", special: "0", months: "1", bonus: "", target: "", other: "8000", otherpaid: "1600"},
+    preview: false,
+    note: "工资 20,000 元 + 劳务报酬 10,000 元（按 80% 折算 8,000 元，已预扣 1,600 元）。年度汇算应缴 690 元、已预扣 2,050 元 → 应退 1,360 元。",
+  },
+  policy: {
+    values: {gross: "30000", social: "0", special: "3000", months: "12", bonus: "", target: "", other: "", otherpaid: ""},
+    preview: true,
+    note: "把起征点从 5,000 试算到 6,000 元/月：全年预扣 35,880 → 33,480 元，少 2,400 元。规则集是参数，换一版重算不用改引擎。",
+  },
+};
+
+function applyPreset(name) {
+  const preset = PRESETS[name];
+  if (!preset) return;
+  for (const [id, value] of Object.entries(preset.values)) {
+    const el = document.getElementById(id);
+    if (el) el.value = value;
+  }
+  document.getElementById("preview").checked = preset.preview;
+  document.getElementById("presetnote").textContent = preset.note;
+  return runReport();
+}
+
+document.querySelectorAll("[data-preset]").forEach((chip) => {
+  chip.addEventListener("click", () => applyPreset(chip.dataset.preset));
+});
+
+async function runReport() {
   const btn = document.getElementById("go");
   btn.disabled = true;
   try {
@@ -253,7 +315,10 @@ document.getElementById("go").addEventListener("click", async () => {
   } finally {
     btn.disabled = false;
   }
-});
+}
+
+document.getElementById("go").addEventListener("click", runReport);
+applyPreset("cliff");
 </script>
 </body>
 </html>
