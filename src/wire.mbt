@@ -96,6 +96,10 @@ pub(all) struct WireInput {
   year : Int32
   inputs : Array[MonthInput]
   bonus : Int64?
+  /// Ask for the per-month decomposition in the report.
+  explain : Bool
+  /// Ask for the gross that produces this first-month take-home.
+  target_net : Int64?
 } derive(Eq)
 
 ///|
@@ -130,7 +134,23 @@ fn parse_input(source : String) -> WireInput raise TaxError {
     }
     None => None
   }
-  { year, inputs, bonus, }
+  let explain = match fields.get("explain") {
+    Some(True) => true
+    Some(False) => false
+    Some(_) => fail("explain must be a boolean")
+    None => false
+  }
+  let target_net = match fields.get("target_net") {
+    Some(value) => {
+      let t = j_cents(value, "target_net")
+      if t < 0L {
+        fail("target_net must be non-negative")
+      }
+      Some(t)
+    }
+    None => None
+  }
+  { year, inputs, bonus, explain, target_net, }
 }
 
 ///|
@@ -197,6 +217,32 @@ pub fn run_report(source : String) -> String raise TaxError {
       )
     }
     None => buf.write_string(",\"bonus\":null")
+  }
+  if input.explain {
+    buf.write_string(",\"explain\":[")
+    for i, e in explain_withholding(default_rules(), inputs) {
+      if i > 0 {
+        buf.write_string(",")
+      }
+      buf.write_string(
+        "{\"month\":\{e.month},\"taxable_cum\":\{e.taxable_cum},\"bracket\":\{e.bracket_no},\"rate\":\{e.rate_percent},\"quick\":\{e.quick_deduction},\"tax_cum\":\{e.tax_cum},\"withheld\":\{e.withheld},\"formula\":\"\{e.formula}\"}",
+      )
+    }
+    buf.write_string("]")
+  }
+  match input.target_net {
+    Some(target) => {
+      let profile : MonthInput = if inputs.length() > 0 {
+        inputs[0]
+      } else {
+        { gross: 0L, social: 0L, special: 0L, other: 0L, }
+      }
+      let g = gross_up(target, profile.social, profile.special, profile.other)
+      buf.write_string(
+        ",\"gross_up\":{\"target_net\":\{g.target_net},\"gross\":\{g.gross},\"net\":\{g.net},\"overshoot\":\{g.overshoot},\"exact\":\{g.exact}}",
+      )
+    }
+    None => ()
   }
   buf.write_string("}")
   buf.to_string()

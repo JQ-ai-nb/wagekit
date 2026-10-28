@@ -14,6 +14,10 @@ implements formulas. This page is the audit surface.
 - 来源口径：现行个人所得税法及月度换算表（全年一次性奖金）。
 - **年度版本化**：新年度规则 = 新增一个 `annual_table_2027()` 并在入口按
   `year` 选择；旧表保留，历史重算结果不变。
+- **规则集注入**：两张表 + 基本减除费用 + 版本号打包为 `RuleSet`
+  （`src/rules.mbt`）。`withholding_under(rules, inputs)` 用任意规则集重算，
+  `policy_impact(before, after, inputs)` 直接给出换版前后的逐月增减——
+  试算新政策不需要改引擎，也不需要等发版。
 
 ## 基本减除费用
 

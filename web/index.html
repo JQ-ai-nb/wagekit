@@ -43,6 +43,15 @@
   .cliff h2 { color: var(--warn); }
   .hint { font-size: .85rem; color: var(--muted); }
   code { background: #eef; padding: 0 .3em; border-radius: 4px; }
+  .tablewrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  th, td {
+    border-bottom: 1px solid var(--line); padding: .35rem .5rem;
+    text-align: right; white-space: nowrap;
+  }
+  th { color: var(--muted); font-weight: 600; background: #fafbfd; }
+  th:last-child, td:last-child { text-align: left; white-space: normal; }
+  td.mono { font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
@@ -77,6 +86,10 @@
         <label>年终奖（元，可选）</label>
         <input id="bonus" type="number" value="36000" min="0" step="0.01">
       </div>
+      <div>
+        <label>目标首月到手（元，可选）</label>
+        <input id="target" type="number" value="" min="0" step="0.01" placeholder="反推税前应发">
+      </div>
     </div>
     <button id="go">计算</button>
     <p class="hint">
@@ -88,6 +101,15 @@
   <div class="card">
     <h2 style="margin-top:0">JSON 报告</h2>
     <pre id="report">点击「计算」查看结果。</pre>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">税额分解（每月为什么是这个数）</h2>
+    <p class="hint" style="margin-top:0">
+      每一笔预扣都能追溯到档位、税率与速算扣除数——不是给一个数，是给可核对的算式。
+    </p>
+    <div id="breakdown" class="tablewrap"><p class="hint">点击「计算」查看。</p></div>
+    <p id="grossup" class="hint"></p>
   </div>
 
   <div class="card">
@@ -122,10 +144,13 @@ document.getElementById("go").addEventListener("click", async () => {
       other: 0,
     };
     const bonusInput = toCents("bonus");
+    const targetInput = toCents("target");
     const doc = {
       year: 2026,
       months: Array.from({length: months}, () => ({...entry})),
       ...(bonusInput > 0 ? {bonus: bonusInput} : {}),
+      explain: true,
+      ...(targetInput > 0 ? {target_net: targetInput} : {}),
     };
     const core = await import("./wagekit.js");
     const report = JSON.parse(core.run(JSON.stringify(doc)));
@@ -145,6 +170,36 @@ document.getElementById("go").addEventListener("click", async () => {
       el.textContent = `全年预扣合计 ${yuan(report.total_withheld)} 元\n\n${rows}${bonusLine}`;
     } else {
       el.textContent = "计算失败：" + report.error;
+    }
+
+    const bd = document.getElementById("breakdown");
+    if (report.ok && report.explain) {
+      const head =
+        "<table><thead><tr><th>月</th><th>累计应纳税所得额</th><th>档位</th>" +
+        "<th>税率</th><th>速算扣除数</th><th>本月预扣</th><th>算式</th></tr></thead><tbody>";
+      const body = report.explain.map((e) => {
+        const bracket = e.bracket === 0 ? "—" : `第 ${e.bracket} 档`;
+        const rate = e.bracket === 0 ? "—" : `${e.rate}%`;
+        return `<tr><td class="mono">${e.month}</td>` +
+          `<td class="mono">${yuan(e.taxable_cum)}</td>` +
+          `<td>${bracket}</td><td class="mono">${rate}</td>` +
+          `<td class="mono">${e.bracket === 0 ? "—" : yuan(e.quick)}</td>` +
+          `<td class="mono">${yuan(e.withheld)}</td>` +
+          `<td class="mono">${e.formula.replace(/</g, "&lt;")}</td></tr>`;
+      }).join("");
+      bd.innerHTML = head + body + "</tbody></table>";
+    } else {
+      bd.innerHTML = '<p class="hint">点击「计算」查看。</p>';
+    }
+
+    const gu = document.getElementById("grossup");
+    if (report.ok && report.gross_up) {
+      const g = report.gross_up;
+      gu.textContent = g.exact
+        ? `反推：首月到手 ${yuan(g.target_net)} 元 → 税前应发 ${yuan(g.gross)} 元（分毫不差）`
+        : `反推：首月到手 ${yuan(g.target_net)} 元 → 税前应发 ${yuan(g.gross)} 元，实际到手 ${yuan(g.net)} 元（该到手额无法精确命中，超出 ${yuan(g.overshoot)} 元）`;
+    } else {
+      gu.textContent = "";
     }
     document.getElementById("slip").textContent = slip.startsWith("error:") ? slip : slip;
   } catch (err) {

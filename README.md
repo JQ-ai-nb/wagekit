@@ -17,6 +17,10 @@ WageKit 把"发工资要算的税"做成可验证的纯计算库：输入任职�
 | 社保公积金 | 基数上下限 clamp、逐险种舍入；内置五城示例参数（标注 EXAMPLE） |
 | 其他所得 | 收入类型枚举：劳务报酬（20/30/40%）、稿酬（20%）、特许权使用费（20%），共享 800/80% 费用减除 |
 | 年度汇算 | 应退/应补分列输出；劳务报酬并入口径差产生真实退税场景 |
+| 税后反推 | 给定到手金额求税前应发（`gross_up`）：分段函数求逆，分位台阶上取最小可行解，不可精确命中时报告超出几分 |
+| 税额分解 | 每月预扣追溯到底：第几档、什么税率、速算扣除数多少、完整算式（`explain`） |
+| 规则集注入 | 两张税率表 + 起征点 + 版本号打包为 `RuleSet`，可换一整套规则重算，不改引擎 |
+| 政策影响面 | 同一份工资在旧/新两版规则下逐月对比，输出每人每月增减（`policy_impact`） |
 | 工资条 | Markdown 输出：应发、各项扣除、实发、累计口径 |
 | 确定性 | 同一输入产生逐字节相同的 JSON；规则表数据驱动、按年度版本化 |
 
@@ -26,6 +30,17 @@ WageKit 把"发工资要算的税"做成可验证的纯计算库：输入任职�
 2. **跑独立 oracle**：`python tests/oracle.py 3000`——Python `Decimal` 按官方口径独立实现同一套规则，3,000 组随机工资逐字段对比；
 3. **生成工资条**：`node bin/wagekit.mjs examples/months.json --md`，输出样张见 `examples/expected-output.md`；
 4. 想看与现有项目的关系：本 README「与现有项目的关系」。
+
+## 四种人用它做什么
+
+同一个计算层，四个真实场景，不是四个玩具 demo：
+
+| 谁 | 问题 | 调用 |
+| --- | --- | --- |
+| 招聘 / HR | "offer 写 25,000 到手，税前该开多少？" | `gross_up` / JSON 的 `target_net` |
+| 财务 | "这个月每个人的预扣为什么是这个数？" | `explain_withholding` / JSON 的 `explain` |
+| 薪酬系统 | "政策换版，全公司要多掏多少钱？" | `policy_impact` |
+| 个人 | "年终奖 36,000 还是 36,001 划算？" | `bonus_compare` |
 
 ## 三个完整用例
 
@@ -45,14 +60,36 @@ WageKit 把"发工资要算的税"做成可验证的纯计算库：输入任职�
 
 `render_payslip` 输出 Markdown：应发、三险一金、专项附加、本月预扣、实发、累计口径——可直接进报告与聊天。
 
+### 5. 反推：到手 20,000 该开多少税前
+
+```sh
+cat > /tmp/offer.json <<'JSON'
+{"year":2026,"months":[{"gross":0,"social":0,"special":300000,"other":0}],"target_net":2000000}
+JSON
+node bin/wagekit.mjs /tmp/offer.json
+```
+
+输出 `"gross_up":{"gross":2037113,"net":2000000,"overshoot":0,"exact":true}`——税前 20,371.13 元分毫不差地落到 20,000 元。
+不是解方程：税是分段线性且四舍五入到分，净额曲线有台阶，某些到手额**永远取不到**，所以引擎返回最小可行税前并如实报告超出几分。
+
+### 6. 税额分解：为什么是这个数
+
+同一份输入加 `"explain":true`，每个月都会带出档位、税率、速算扣除数与算式：
+
+```json
+{"month":3,"taxable_cum":6600000,"bracket":2,"rate":10,"quick":252000,
+ "tax_cum":408000,"withheld":220000,"formula":"66000.00 × 10% − 2520.00 = 4080.00"}
+```
+
 ## 验证
 
 ```sh
 moon check --target all --deny-warn   # 四目标零警告
-moon test --deny-warn                 # 单元测试：临界点穷举、状态机不变量、舍入口径
+moon test --deny-warn                 # 单元测试：临界点穷举、状态机不变量、舍入口径、反推往返
 node scripts/build.mjs
 node bin/wagekit.mjs examples/months.json          # JSON 报告
 node bin/wagekit.mjs examples/months.json --md     # 全年工资条（Markdown）
+node bin/wagekit.mjs examples/explain-grossup.json # 税额分解 + 反推
 python tests/oracle.py 3000           # 独立 Decimal oracle，逐字段对比
 ```
 
@@ -60,7 +97,7 @@ oracle 的随机流固定覆盖**每一个税率跳档点 ±1 分**（年终奖�
 
 CI 在 Linux / macOS / Windows 上以 `--target all`（wasm / wasm-gc / js / native）执行以上全部检查。
 
-24 项单元测试 + 8 项 CLI 测试；每份报告都带 `rules` 字段（当前 `2026.1`），归档结果可追溯到确切的规则集。
+37 项单元测试 + 11 项 CLI 测试；每份报告都带 `rules` 字段（当前 `2026.1`），归档结果可追溯到确切的规则集。
 
 ## 批量性能（可复现）
 
@@ -75,8 +112,9 @@ node bench/bench.mjs 1000 5
 
 | 维度 | Excel / 在线计算器 | WageKit |
 | --- | --- | --- |
-| 口径 | 黑盒公式，改没改不知道 | 每张税率表、每个常量都在 `docs/RULES.md` 里标了位置与来源 |
-| 年度更新 | 等厂商/作者改模板 | 规则是数据，改表即可；`annual_table_2027()` 加一张表，历史结果不变 |
+| 口径 | 黑盒公式，改没改不知道 | 每张税率表、每个常量都在 `docs/RULES.md` 里标了位置与来源；`explain` 把每月预扣还原成算式 |
+| 方向 | 只能正向算：税前 → 税后 | 双向：`gross_up` 由到手反推应发，offer 谈薪直接用 |
+| 年度更新 | 等厂商/作者改模板 | 规则是数据，换一个 `RuleSet` 即重算；`policy_impact` 直接给出换版前后的逐月增减 |
 | 可嵌入 | 不能 | MoonBit 库 / JSON wire / Node CLI / wasm 宿主，四种调用 |
 | 可验证 | 靠自己复核 | Python `Decimal` 独立实现做 oracle，3,000 组逐字段对比 |
 | 批量与参数化 | 手工改单元格 | 五城社保参数、任意月数、任意所得组合，一次调用 |

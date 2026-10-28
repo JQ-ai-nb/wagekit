@@ -40,26 +40,7 @@ pub const BASIC_DEDUCTION : Int64 = 500_000L
 /// `tax_cum(k) - tax_cum(k-1)` clamped at zero (over-withheld tax carries
 /// forward as credit, per the cumulative method).
 pub fn cumulative_withholding(inputs : Array[MonthInput]) -> Array[MonthResult] {
-  let results = []
-  let table = annual_table()
-  let mut cum_gross = 0L
-  let mut cum_deduct = 0L
-  let mut prev_tax = 0L
-  for k, input in inputs {
-    cum_gross = cum_gross + input.gross
-    cum_deduct = cum_deduct +
-      BASIC_DEDUCTION +
-      input.social +
-      input.special +
-      input.other
-    let taxable = cum_gross - cum_deduct
-    let tax_cum = tax_of(table, taxable)
-    let diff = tax_cum - prev_tax
-    let withheld = if diff < 0L { 0L } else { diff }
-    results.push({ month: k + 1, taxable_cum: taxable, tax_cum, withheld, })
-    prev_tax = tax_cum
-  }
-  results
+  withholding_under(default_rules(), inputs)
 }
 
 ///|

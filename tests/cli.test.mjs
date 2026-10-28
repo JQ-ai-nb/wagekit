@@ -84,3 +84,34 @@ test('more than twelve months is rejected',()=>{
   assert.equal(result.status,2);
   assert.match(JSON.parse(result.stdout).error,/at most 12/);
 });
+
+test('explain decomposes each month into bracket, rate and quick deduction',()=>{
+  const report=JSON.parse(run({...threeMonths,explain:true}).stdout);
+  assert.equal(report.explain.length,3);
+  assert.equal(report.explain[0].bracket,1);
+  assert.equal(report.explain[0].rate,3);
+  assert.equal(report.explain[0].formula,'22000.00 × 3% − 0.00 = 660.00');
+  assert.equal(report.explain[1].bracket,2);
+  assert.equal(report.explain[1].quick,252000);
+  assert.equal(report.explain[2].formula,'66000.00 × 10% − 2520.00 = 4080.00');
+  // The breakdown must agree with the schedule it explains.
+  report.explain.forEach((e,i)=>assert.equal(e.withheld,report.months[i].withheld));
+});
+
+test('target_net grosses up to the smallest gross that reaches it',()=>{
+  const report=JSON.parse(run({
+    year:2026,
+    months:[{gross:3000000,social:0,special:300000,other:0}],
+    target_net:2000000,
+  }).stdout);
+  assert.equal(report.gross_up.net,2000000);
+  assert.equal(report.gross_up.overshoot,0);
+  assert.equal(report.gross_up.exact,true);
+  assert.ok(report.gross_up.gross>2000000);
+});
+
+test('explain and gross_up stay absent unless asked for',()=>{
+  const report=JSON.parse(run(threeMonths).stdout);
+  assert.equal(report.explain,undefined);
+  assert.equal(report.gross_up,undefined);
+});

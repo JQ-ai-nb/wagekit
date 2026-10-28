@@ -36,7 +36,15 @@ pub fn clamp_cents(Int64, Int64, Int64) -> Int64
 
 pub fn cumulative_withholding(Array[MonthInput]) -> Array[MonthResult]
 
+pub fn default_rules() -> RuleSet
+
 pub fn employee_social(CityParams, Int64) -> Int64
+
+pub fn explain_withholding(RuleSet, Array[MonthInput]) -> Array[MonthExplanation]
+
+pub fn gross_up(Int64, Int64, Int64, Int64) -> GrossUp
+
+pub fn gross_up_under(RuleSet, Int64, Int64, Int64, Int64) -> GrossUp
 
 pub fn labor_withhold(Int64) -> Int64
 
@@ -51,6 +59,8 @@ pub fn other_income_inclusion(Int64) -> Int64
 pub fn other_income_taxable(Int64) -> Int64
 
 pub fn other_income_withhold(OtherIncomeKind, Int64) -> Int64
+
+pub fn policy_impact(RuleSet, RuleSet, Array[MonthInput]) -> PolicyImpact
 
 pub fn render_bonus_report(BonusChoice) -> String
 
@@ -69,6 +79,8 @@ pub fn tax_of(RateTable, Int64) -> Int64
 pub fn total_withheld(Array[MonthResult]) -> Int64
 
 pub fn validate(SpecialDeductions, Int64) -> Unit raise TaxError
+
+pub fn withholding_under(RuleSet, Array[MonthInput]) -> Array[MonthResult]
 
 pub fn yuan_text(Int64) -> String
 
@@ -94,6 +106,32 @@ pub(all) struct CityParams {
   fund_rate : Int32
 } derive(Eq)
 
+pub(all) struct GrossUp {
+  target_net : Int64
+  gross : Int64
+  net : Int64
+  overshoot : Int64
+  exact : Bool
+} derive(Eq)
+
+pub(all) struct MonthExplanation {
+  month : Int32
+  taxable_cum : Int64
+  bracket_no : Int32
+  rate_percent : Int32
+  quick_deduction : Int64
+  tax_cum : Int64
+  withheld : Int64
+  formula : String
+} derive(Eq)
+
+pub(all) struct MonthImpact {
+  month : Int32
+  before : Int64
+  after : Int64
+  delta : Int64
+} derive(Eq)
+
 pub(all) struct MonthInput {
   gross : Int64
   social : Int64
@@ -114,10 +152,26 @@ pub(all) enum OtherIncomeKind {
   License
 } derive(Eq)
 
+pub(all) struct PolicyImpact {
+  before_version : String
+  after_version : String
+  months : Array[MonthImpact]
+  total_before : Int64
+  total_after : Int64
+  total_delta : Int64
+} derive(Eq)
+
 pub(all) struct RateTable {
   upper : Array[Int64]
   rates : Array[Int32]
   quick : Array[Int64]
+} derive(Eq)
+
+pub(all) struct RuleSet {
+  version : String
+  basic_deduction : Int64
+  annual : RateTable
+  monthly : RateTable
 } derive(Eq)
 
 pub(all) struct Settlement {
@@ -142,6 +196,8 @@ pub(all) struct WireInput {
   year : Int32
   inputs : Array[MonthInput]
   bonus : Int64?
+  explain : Bool
+  target_net : Int64?
 } derive(Eq)
 
 pub(all) struct YearSummary {

@@ -81,8 +81,53 @@ The employee share is computed per item on the base clamped into
 bundled city table is **example data**; replace it with current-year figures
 from each city's HR bureau before real use.
 
+## 规则集（Rule sets）
+
+A `RuleSet` is the whole policy edition in one value: `version`, monthly
+`basic_deduction`, the `annual` table and the `monthly` table. `default_rules()`
+returns the shipped edition; `withholding_under(rules, inputs)` runs the same
+state machine under any other. Nothing in the engine reads a table directly, so
+"a policy change is a data change" is enforced by the signature rather than
+asserted in prose.
+
+## 税额分解（Explanation）
+
+`explain_withholding(rules, inputs)` returns, per month: cumulative taxable
+income, 1-based bracket number, marginal rate, quick deduction, cumulative tax,
+withheld amount, and the arithmetic as a string. The invariant is that the
+decomposition agrees with the schedule it describes — same `tax_cum`, same
+`withheld` — which the test suite checks for a full year, not just one month.
+A month whose cumulative taxable income is not positive reports bracket `0` and
+zero tax rather than pretending to be in the first bracket.
+
+## 税后反推（Gross-up）
+
+Forward: `net(g) = g − social − tax_of(annual, g − basic − social − special − other)`.
+Inverse: find the **smallest** `g` with `net(g) ≥ target`.
+
+- `net` is non-decreasing in `g` because the marginal rate is below 100% and the
+  tax is never negative, so the inverse is a monotone search.
+- Cent rounding creates plateaus: consecutive gross values can map to the same
+  net, so some targets are unreachable. The engine returns the smallest gross
+  that reaches or exceeds the target and reports `overshoot = net − target`
+  and `exact`. Silently rounding the answer down would underpay the promise.
+- Search is doubling to bracket the answer, then binary search: `O(log g)`.
+- Scoped to a **first month** (no prior cumulative state). Withholding later in
+  the year depends on the months before it, so a "monthly net" figure is only
+  well defined for the first period or for a steady state.
+
+## 政策影响面（Policy impact）
+
+`policy_impact(before, after, inputs)` runs one payroll under two editions and
+returns per-month `{before, after, delta}` plus the totals. Guarantees: the
+monthly deltas sum to `total_delta`, and `total_after = total_before + total_delta`.
+This is what a finance team needs before an edition takes effect — not the new
+tax, but the difference from the old one.
+
 ## 数据版本化（Data versioning）
 
 Tax tables live in code as data (`annual_table`, `monthly_table`), one function
-per year-cycle. A policy change is a data change, not an engine change; the
-tables are the audit surface.
+per year-cycle, and are bundled into a `RuleSet` together with the basic
+deduction and a version string. A policy change is a data change, not an engine
+change; `default_rules()` is the only place that decides which edition an
+unqualified call means, and every report stamps the edition that produced it.
