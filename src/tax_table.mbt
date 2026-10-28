@@ -14,6 +14,12 @@ pub(all) struct RateTable {
 } derive(Eq)
 
 ///|
+/// Rule-set version carried into every report. Bump this whenever a table or
+/// a constant changes, so an archived report can be traced to an exact rule
+/// set (see docs/RULES.md).
+pub const RULES_VERSION : String = "2026.1"
+
+///|
 /// Annual comprehensive income table (IIT law, current edition).
 /// Brackets at 36k / 144k / 300k / 420k / 660k / 960k yuan.
 pub fn annual_table() -> RateTable {

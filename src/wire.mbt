@@ -175,7 +175,9 @@ pub fn run_report(source : String) -> String raise TaxError {
   let inputs = input.inputs
   let results = cumulative_withholding(inputs)
   let buf = StringBuilder()
-  buf.write_string("{\"ok\":true,\"year\":")
+  buf.write_string("{\"ok\":true,\"rules\":\"")
+  buf.write_string(RULES_VERSION)
+  buf.write_string("\",\"year\":")
   buf.write_string(year.to_string())
   buf.write_string(",\"months\":[")
   for i, r in results {
