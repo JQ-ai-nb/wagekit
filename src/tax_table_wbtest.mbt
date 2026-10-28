@@ -11,3 +11,20 @@ test "annual table brackets at 36000 yuan" {
   assert_eq(tax_of(annual_table(), 0L), 0L)
   assert_eq(tax_of(annual_table(), -100L), 0L)
 }
+
+///|
+test "the annual table never jumps by more than a fen at an edge" {
+  // A wrong quick-deduction shows up here and nowhere else: the bracket would
+  // either gap (tax falls) or overlap (tax leaps) at the boundary.
+  for edge in [
+    3_600_000L, 14_400_000L, 30_000_000L, 42_000_000L, 66_000_000L, 96_000_000L,
+  ] {
+    let below = tax_of(annual_table(), edge - 1L)
+    let at = tax_of(annual_table(), edge)
+    let over = tax_of(annual_table(), edge + 1L)
+    assert_eq(below <= at, true)
+    assert_eq(at <= over, true)
+    assert_eq(at - below <= 1L, true)
+    assert_eq(over - at <= 1L, true)
+  }
+}
