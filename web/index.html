@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WageKit 在线演示 — MoonBit 薪酬个税计算引擎</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --muted: #667; --line: #d8dce4;
+    --brand: #0b57d0; --ok: #137333; --warn: #a3071a;
+    --card: #ffffff; --bg: #f5f7fa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 1rem 4rem;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    background: var(--bg); color: var(--ink); line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin: 0 0 .2em; }
+  .sub { color: var(--muted); margin: 0 0 1.5rem; }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 1.2rem 1.4rem; margin-bottom: 1.2rem;
+  }
+  label { display: block; font-size: .85rem; color: var(--muted); margin: .6rem 0 .2rem; }
+  input {
+    width: 100%; padding: .45rem .6rem; font-size: 1rem;
+    border: 1px solid var(--line); border-radius: 6px;
+  }
+  .row { display: flex; gap: .8rem; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 140px; }
+  button {
+    margin-top: 1rem; background: var(--brand); color: #fff; border: 0;
+    padding: .55rem 1.4rem; font-size: 1rem; border-radius: 6px; cursor: pointer;
+  }
+  button:disabled { opacity: .5; cursor: wait; }
+  pre {
+    background: #0d1117; color: #d0e7ff; padding: 1rem; border-radius: 8px;
+    overflow-x: auto; font-size: .85rem; white-space: pre-wrap; margin: 0;
+  }
+  .cliff { border-left: 4px solid var(--warn); padding-left: .8rem; }
+  .cliff h2 { color: var(--warn); }
+  .hint { font-size: .85rem; color: var(--muted); }
+  code { background: #eef; padding: 0 .3em; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>WageKit 在线演示</h1>
+  <p class="sub">
+    MoonBit 薪酬个税计算引擎 · 全部计算在你的浏览器本地完成（wasm/js，无网络请求，数据不出页面）·
+    所有金额以分（整数）精确计算，浮点从不接触钱
+  </p>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>月度应发工资（元）</label>
+        <input id="gross" type="number" value="30000" min="0" step="0.01">
+      </div>
+      <div>
+        <label>三险一金（个人，元/月）</label>
+        <input id="social" type="number" value="0" min="0" step="0.01">
+      </div>
+      <div>
+        <label>专项附加扣除（元/月）</label>
+        <input id="special" type="number" value="3000" min="0" step="0.01">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>月份数（1–12）</label>
+        <input id="months" type="number" value="12" min="1" max="12" step="1">
+      </div>
+      <div>
+        <label>年终奖（元，可选）</label>
+        <input id="bonus" type="number" value="36000" min="0" step="0.01">
+      </div>
+    </div>
+    <button id="go">计算</button>
+    <p class="hint">
+      试着把年终奖从 <code>36000</code> 改成 <code>36001</code> 再点一次——
+      看着“多拿一元”，税额跳到 3390.10 元，到手反而少 2309.10 元。这是引擎内置的全档临界点测试之一。
+    </p>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">JSON 报告</h2>
+    <pre id="report">点击「计算」查看结果。</pre>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">工资条（Markdown 渲染）</h2>
+    <pre id="slip" style="background:#f6f8fa;color:var(--ink)">—</pre>
+  </div>
+
+  <div class="card cliff">
+    <h2>为什么这个库存在</h2>
+    <p>
+      钱是整数分，浮点从不出现在任何中间量；累计预扣预缴是跨月状态机，单月函数必然算错跳档；
+      年终奖单独计税在每档边界都有一个「多发一分、少拿千元」的悬崖。
+      WageKit 用 <strong>Python Decimal 独立实现</strong>作为逐字段对照的 oracle（随机 3,000 组 +
+      全部跳档点 ±1 分穷举），两个实现谁错了都会被发现。
+    </p>
+  </div>
+</div>
+
+<script type="module">
+const yuan = (cents) => (cents / 100).toLocaleString("zh-CN", {minimumFractionDigits: 2});
+const toCents = (id) => Math.round(Number(document.getElementById(id).value || "0") * 100);
+
+document.getElementById("go").addEventListener("click", async () => {
+  const btn = document.getElementById("go");
+  btn.disabled = true;
+  try {
+    const months = Math.min(12, Math.max(1, Math.round(toCents("months") / 100)));
+    const entry = {
+      gross: toCents("gross"),
+      social: toCents("social"),
+      special: toCents("special"),
+      other: 0,
+    };
+    const bonusInput = toCents("bonus");
+    const doc = {
+      year: 2026,
+      months: Array.from({length: months}, () => ({...entry})),
+      ...(bonusInput > 0 ? {bonus: bonusInput} : {}),
+    };
+    const core = await import("../dist/wagekit.js");
+    const report = JSON.parse(core.run(JSON.stringify(doc)));
+    const slip = core.run_payslip(JSON.stringify(doc));
+
+    const el = document.getElementById("report");
+    if (report.ok) {
+      const rows = report.months.map((m) =>
+        `${String(m.month).padStart(2)} 月  预扣 ${yuan(m.withheld)} 元  （累计应纳税所得额 ${yuan(m.taxable_cum)} 元）`
+      ).join("\n");
+      let bonusLine = "";
+      if (report.bonus) {
+        bonusLine =
+          `\n年终奖 ${yuan(report.bonus.amount)} 元：单独计税 ${yuan(report.bonus.standalone_tax)} 元 / ` +
+          `并入综合 ${yuan(report.bonus.combined_extra_tax)} 元 → 建议 ${report.bonus.best === "standalone" ? "单独计税" : "并入综合所得"}`;
+      }
+      el.textContent = `全年预扣合计 ${yuan(report.total_withheld)} 元\n\n${rows}${bonusLine}`;
+    } else {
+      el.textContent = "计算失败：" + report.error;
+    }
+    document.getElementById("slip").textContent = slip.startsWith("error:") ? slip : slip;
+  } catch (err) {
+    document.getElementById("report").textContent = "加载失败：" + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
