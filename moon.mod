@@ -10,4 +10,6 @@ license = "MIT"
 
 description = "Payroll and individual income tax engine for MoonBit: cumulative withholding, annual bonus traps, penny-exact money, auditable per-month breakdowns, and net-to-gross inversion."
 
+keywords = [ "payroll", "tax", "salary", "finance", "china" ]
+
 warnings = "-implicit_impl_as_method"
