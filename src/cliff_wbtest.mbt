@@ -25,8 +25,7 @@ test "the famous cliff costs 2 309.10 yuan on one extra yuan" {
   let above = 3_600_100L
   assert_eq(bonus_standalone(below), 108_000L)
   assert_eq(bonus_standalone(above), 339_010L)
-  let drop = (below - bonus_standalone(below)) -
-    (above - bonus_standalone(above))
+  let drop = below - bonus_standalone(below) - (above - bonus_standalone(above))
   assert_eq(drop, 230_910L)
 }
 

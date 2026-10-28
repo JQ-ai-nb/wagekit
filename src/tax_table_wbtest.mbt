@@ -16,9 +16,10 @@ test "annual table brackets at 36000 yuan" {
 test "the annual table never jumps by more than a fen at an edge" {
   // A wrong quick-deduction shows up here and nowhere else: the bracket would
   // either gap (tax falls) or overlap (tax leaps) at the boundary.
-  for edge in [
-    3_600_000L, 14_400_000L, 30_000_000L, 42_000_000L, 66_000_000L, 96_000_000L,
-  ] {
+  for
+    edge in [
+      3_600_000L, 14_400_000L, 30_000_000L, 42_000_000L, 66_000_000L, 96_000_000L,
+    ] {
     let below = tax_of(annual_table(), edge - 1L)
     let at = tax_of(annual_table(), edge)
     let over = tax_of(annual_table(), edge + 1L)
