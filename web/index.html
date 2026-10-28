@@ -127,7 +127,7 @@ document.getElementById("go").addEventListener("click", async () => {
       months: Array.from({length: months}, () => ({...entry})),
       ...(bonusInput > 0 ? {bonus: bonusInput} : {}),
     };
-    const core = await import("../dist/wagekit.js");
+    const core = await import("./wagekit.js");
     const report = JSON.parse(core.run(JSON.stringify(doc)));
     const slip = core.run_payslip(JSON.stringify(doc));
 
