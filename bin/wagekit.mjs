@@ -24,7 +24,11 @@ let documentText;
 try{
   documentText=JSON.stringify(JSON.parse(readFileSync(inputPath,'utf8')));
 }catch(error){
-  console.error('invalid input file: '+error.message);
+  // Machine-readable on stdout, human hint on stderr: same contract as every
+  // other failure, so `node bin/wagekit.mjs x.json | jq .ok` never sees empty.
+  const message='invalid input file: '+error.message;
+  console.error(message);
+  console.log(JSON.stringify({ok:false,error:message}));
   process.exit(2);
 }
 
