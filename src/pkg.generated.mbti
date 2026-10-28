@@ -1,0 +1,123 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "JQ-ai-nb/wagekit/src"
+
+// Values
+pub const BASIC_DEDUCTION : Int64 = 500_000
+
+pub const CHILD_EDU_MONTHLY : Int64 = 200_000
+
+pub const CONTINUING_CAP : Int64 = 40_000
+
+pub const ELDER_CAP : Int64 = 300_000
+
+pub const INFANT_MONTHLY : Int64 = 200_000
+
+pub const LOAN_MONTHLY : Int64 = 100_000
+
+pub const MAJOR_MEDICAL_YEAR_CAP : Int64 = 8_000_000
+
+pub fn annual_settlement(Array[MonthInput], Int64, Bool, Int64, Int64) -> Settlement
+
+pub fn annual_table() -> RateTable
+
+pub fn bonus_compare(Int64, Array[MonthInput]) -> BonusChoice
+
+pub fn bonus_net(Int64) -> Int64
+
+pub fn bonus_standalone(Int64) -> Int64
+
+pub fn bracket(RateTable, Int64) -> Int32?
+
+pub fn city_params(String) -> CityParams?
+
+pub fn clamp_cents(Int64, Int64, Int64) -> Int64
+
+pub fn cumulative_withholding(Array[MonthInput]) -> Array[MonthResult]
+
+pub fn employee_social(CityParams, Int64) -> Int64
+
+pub fn labor_withhold(Int64) -> Int64
+
+pub fn monthly_table() -> RateTable
+
+pub fn monthly_total(SpecialDeductions) -> Int64
+
+pub fn mul_percent(Int64, Int32) -> Int64
+
+pub fn render_bonus_report(BonusChoice) -> String
+
+pub fn render_payslip(Int32, Int32, MonthInput, MonthResult, String) -> String
+
+pub fn run_report(String) -> String raise TaxError
+
+pub fn tax_of(RateTable, Int64) -> Int64
+
+pub fn total_withheld(Array[MonthResult]) -> Int64
+
+pub fn validate(SpecialDeductions, Int64) -> Unit raise TaxError
+
+pub fn yuan_text(Int64) -> String
+
+// Errors
+pub(all) suberror TaxError {
+  TaxError(String)
+}
+
+// Types and methods
+pub(all) struct BonusChoice {
+  standalone_tax : Int64
+  combined_extra_tax : Int64
+  best : String
+} derive(Eq)
+
+pub(all) struct CityParams {
+  city : String
+  base_lower : Int64
+  base_upper : Int64
+  pension_rate : Int32
+  medical_rate : Int32
+  unemployment_rate : Int32
+  fund_rate : Int32
+} derive(Eq)
+
+pub(all) struct MonthInput {
+  gross : Int64
+  social : Int64
+  special : Int64
+  other : Int64
+} derive(Eq)
+
+pub(all) struct MonthResult {
+  month : Int32
+  taxable_cum : Int64
+  tax_cum : Int64
+  withheld : Int64
+} derive(Eq)
+
+pub(all) struct RateTable {
+  upper : Array[Int64]
+  rates : Array[Int32]
+  quick : Array[Int64]
+} derive(Eq)
+
+pub(all) struct Settlement {
+  tax_due : Int64
+  prepaid : Int64
+  refund : Int64
+  payable : Int64
+  bonus_merged : Bool
+} derive(Eq)
+
+pub(all) struct SpecialDeductions {
+  children_education : Int32
+  infants : Int32
+  housing_loan : Bool
+  housing_rent : Int64
+  elder_support : Int64
+  continuing_education : Int64
+  major_medical_monthly : Int64
+} derive(Eq)
+
+// Type aliases
+
+// Traits
