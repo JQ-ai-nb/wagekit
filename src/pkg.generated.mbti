@@ -16,6 +16,8 @@ pub const LOAN_MONTHLY : Int64 = 100_000
 
 pub const MAJOR_MEDICAL_YEAR_CAP : Int64 = 8_000_000
 
+pub const RULES_VERSION : String = "2026.1"
+
 pub fn annual_settlement(Array[MonthInput], Int64, Bool, Int64, Int64) -> Settlement
 
 pub fn annual_table() -> RateTable
@@ -44,13 +46,23 @@ pub fn monthly_total(SpecialDeductions) -> Int64
 
 pub fn mul_percent(Int64, Int32) -> Int64
 
+pub fn other_income_inclusion(Int64) -> Int64
+
+pub fn other_income_taxable(Int64) -> Int64
+
+pub fn other_income_withhold(OtherIncomeKind, Int64) -> Int64
+
 pub fn render_bonus_report(BonusChoice) -> String
 
 pub fn render_payslip(Int32, Int32, MonthInput, MonthResult, String) -> String
 
+pub fn render_year_summary(YearSummary) -> String
+
 pub fn run_payslip_report(String) -> String raise TaxError
 
 pub fn run_report(String) -> String raise TaxError
+
+pub fn summarize(Array[MonthInput], Array[MonthResult]) -> YearSummary
 
 pub fn tax_of(RateTable, Int64) -> Int64
 
@@ -96,6 +108,12 @@ pub(all) struct MonthResult {
   withheld : Int64
 } derive(Eq)
 
+pub(all) enum OtherIncomeKind {
+  Labor
+  Royalty
+  License
+} derive(Eq)
+
 pub(all) struct RateTable {
   upper : Array[Int64]
   rates : Array[Int32]
@@ -124,6 +142,16 @@ pub(all) struct WireInput {
   year : Int32
   inputs : Array[MonthInput]
   bonus : Int64?
+} derive(Eq)
+
+pub(all) struct YearSummary {
+  months : Int32
+  gross_total : Int64
+  cash_deduction_total : Int64
+  tax_base_deduction_total : Int64
+  tax_total : Int64
+  net_total : Int64
+  effective_rate_bp : Int32
 } derive(Eq)
 
 // Type aliases

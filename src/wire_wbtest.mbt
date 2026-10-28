@@ -13,7 +13,8 @@ test "wire rejects a thirteenth month" {
     if i > 0 {
       months = months + ","
     }
-    months = months + "{\"gross\":100000,\"social\":0,\"special\":0,\"other\":0}"
+    months = months +
+      "{\"gross\":100000,\"social\":0,\"special\":0,\"other\":0}"
   }
   let doc = "{\"year\":2026,\"months\":[" + months + "]}"
   let rejected = try {
