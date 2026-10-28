@@ -1,0 +1,7 @@
+target/
+_build/
+dist/
+node_modules/
+*.core
+*.mi
+examples/months.json.tmp
