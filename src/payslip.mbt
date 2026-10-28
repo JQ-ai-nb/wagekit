@@ -22,9 +22,13 @@ pub fn render_payslip(
   buf.write_string("| 专项附加扣除 | \{yuan_text(input.special)} |\n")
   buf.write_string("| 其他扣除 | \{yuan_text(input.other)} |\n")
   buf.write_string("| 本月预扣个税 | \{yuan_text(result.withheld)} |\n")
-  buf.write_string(
-    "| 实发 | \{yuan_text(input.gross - input.social - result.withheld)} |\n\n",
-  )
+  let net = input.gross - input.social - result.withheld
+  buf.write_string("| 实发 | \{yuan_text(net)} |\n\n")
+  if net < 0L {
+    buf.write_string(
+      "> 警告：实发为负，扣除项超过应发，请核对输入。\n\n",
+    )
+  }
   buf.write_string(
     "- 累计应纳税所得额：\{yuan_text(result.taxable_cum)} 元\n- 累计应预扣：\{yuan_text(result.tax_cum)} 元\n",
   )

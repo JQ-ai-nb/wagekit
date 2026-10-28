@@ -77,3 +77,10 @@ test('out-of-range years are rejected',()=>{
   assert.equal(result.status,2);
   assert.match(JSON.parse(result.stdout).error,/2000\.\.2100/);
 });
+
+test('more than twelve months is rejected',()=>{
+  const months=Array.from({length:13},()=>({gross:1000000,social:0,special:0,other:0}));
+  const result=run({year:2026,months});
+  assert.equal(result.status,2);
+  assert.match(JSON.parse(result.stdout).error,/at most 12/);
+});

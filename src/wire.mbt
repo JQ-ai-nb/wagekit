@@ -117,6 +117,9 @@ fn parse_input(source : String) -> WireInput raise TaxError {
     fail("year must be within 2000..2100")
   }
   let inputs = j_array(required(fields, "months"), "months").map(read_month)
+  if inputs.length() > 12 {
+    fail("a tax year has at most 12 months")
+  }
   let bonus = match fields.get("bonus") {
     Some(value) => {
       let b = j_cents(value, "bonus")
