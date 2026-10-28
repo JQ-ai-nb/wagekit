@@ -198,6 +198,9 @@ pub(all) struct WireInput {
   bonus : Int64?
   explain : Bool
   target_net : Int64?
+  other_income : Int64?
+  other_prepaid : Int64?
+  preview_basic : Int64?
 } derive(Eq)
 
 pub(all) struct YearSummary {

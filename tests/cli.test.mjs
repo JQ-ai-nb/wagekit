@@ -115,3 +115,37 @@ test('explain and gross_up stay absent unless asked for',()=>{
   assert.equal(report.explain,undefined);
   assert.equal(report.gross_up,undefined);
 });
+
+test('settlement reconciles other income and reports the refund',()=>{
+  const report=JSON.parse(run({
+    year:2026,
+    months:[{gross:2000000,social:0,special:0,other:0}],
+    other_income:800000,
+    other_prepaid:160000,
+  }).stdout);
+  assert.equal(report.settlement.tax_due,69000);
+  assert.equal(report.settlement.prepaid,205000);
+  assert.equal(report.settlement.refund,136000);
+  assert.equal(report.settlement.payable,0);
+});
+
+test('settlement stays absent on a wage-only payroll',()=>{
+  assert.equal(JSON.parse(run(threeMonths).stdout).settlement,undefined);
+});
+
+test('negative other income is rejected',()=>{
+  const result=run({year:2026,months:[],other_income:-1});
+  assert.equal(result.status,2);
+  assert.match(JSON.parse(result.stdout).error,/other_income must be non-negative/);
+});
+
+test('preview reports what a different basic deduction would cost',()=>{
+  const report=JSON.parse(run({...threeMonths,preview:{basic_deduction:600000}}).stdout);
+  const impact=report.policy_impact;
+  assert.equal(impact.total_before,408000);
+  assert.equal(impact.total_after,378000);
+  assert.equal(impact.total_delta,-30000);
+  const sum=impact.months.reduce((acc,m)=>acc+m.delta,0);
+  assert.equal(sum,impact.total_delta);
+  assert.equal(impact.after_version,'preview');
+});

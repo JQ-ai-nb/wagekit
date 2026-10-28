@@ -91,6 +91,23 @@
         <input id="target" type="number" value="" min="0" step="0.01" placeholder="反推税前应发">
       </div>
     </div>
+    <div class="row">
+      <div>
+        <label>其他综合所得（元，已按法定比例折算）</label>
+        <input id="other" type="number" value="" min="0" step="0.01" placeholder="如劳务报酬 ×80%">
+      </div>
+      <div>
+        <label>该笔已预扣税（元）</label>
+        <input id="otherpaid" type="number" value="" min="0" step="0.01" placeholder="如 1600">
+      </div>
+      <div>
+        <label>政策试算</label>
+        <label style="display:flex;align-items:center;gap:.4rem;margin-top:.55rem;font-size:.9rem;color:var(--ink)">
+          <input id="preview" type="checkbox" style="width:auto">
+          起征点按 6,000 元/月重算
+        </label>
+      </div>
+    </div>
     <button id="go">计算</button>
     <p class="hint">
       试着把年终奖从 <code>36000</code> 改成 <code>36001</code> 再点一次——
@@ -110,6 +127,8 @@
     </p>
     <div id="breakdown" class="tablewrap"><p class="hint">点击「计算」查看。</p></div>
     <p id="grossup" class="hint"></p>
+    <p id="settle" class="hint"></p>
+    <p id="previewout" class="hint"></p>
   </div>
 
   <div class="card">
@@ -145,12 +164,17 @@ document.getElementById("go").addEventListener("click", async () => {
     };
     const bonusInput = toCents("bonus");
     const targetInput = toCents("target");
+    const otherInput = toCents("other");
+    const otherPaid = toCents("otherpaid");
+    const previewOn = document.getElementById("preview").checked;
     const doc = {
       year: 2026,
       months: Array.from({length: months}, () => ({...entry})),
       ...(bonusInput > 0 ? {bonus: bonusInput} : {}),
       explain: true,
       ...(targetInput > 0 ? {target_net: targetInput} : {}),
+      ...(otherInput > 0 ? {other_income: otherInput, other_prepaid: otherPaid} : {}),
+      ...(previewOn ? {preview: {basic_deduction: 600000}} : {}),
     };
     const core = await import("./wagekit.js");
     const report = JSON.parse(core.run(JSON.stringify(doc)));
@@ -200,6 +224,28 @@ document.getElementById("go").addEventListener("click", async () => {
         : `反推：首月到手 ${yuan(g.target_net)} 元 → 税前应发 ${yuan(g.gross)} 元，实际到手 ${yuan(g.net)} 元（该到手额无法精确命中，超出 ${yuan(g.overshoot)} 元）`;
     } else {
       gu.textContent = "";
+    }
+
+    const st = document.getElementById("settle");
+    if (report.ok && report.settlement) {
+      const s = report.settlement;
+      const verdict = s.refund > 0
+        ? `应退 ${yuan(s.refund)} 元`
+        : (s.payable > 0 ? `应补 ${yuan(s.payable)} 元` : "不多不少");
+      st.textContent = `年度汇算：应缴 ${yuan(s.tax_due)} 元，已预扣 ${yuan(s.prepaid)} 元 → ${verdict}`;
+    } else {
+      st.textContent = "";
+    }
+
+    const pv = document.getElementById("previewout");
+    if (report.ok && report.policy_impact) {
+      const p = report.policy_impact;
+      const arrow = p.total_delta < 0 ? "少" : "多";
+      pv.textContent =
+        `政策试算：起征点 5,000 → 6,000 元/月，全年预扣 ${yuan(p.total_before)} → ${yuan(p.total_after)} 元` +
+        `（${arrow} ${yuan(Math.abs(p.total_delta))} 元）`;
+    } else {
+      pv.textContent = "";
     }
     document.getElementById("slip").textContent = slip.startsWith("error:") ? slip : slip;
   } catch (err) {

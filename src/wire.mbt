@@ -59,6 +59,25 @@ fn j_int(value : Json, what : String) -> Int32 raise TaxError {
 }
 
 ///|
+/// Optional non-negative cent amount. Absent means "not requested", which is
+/// deliberately distinct from zero: it decides whether a report block appears.
+fn opt_cents(
+  fields : Map[String, Json],
+  name : String,
+) -> Int64? raise TaxError {
+  match fields.get(name) {
+    Some(value) => {
+      let v = j_cents(value, name)
+      if v < 0L {
+        fail(name + " must be non-negative")
+      }
+      Some(v)
+    }
+    None => None
+  }
+}
+
+///|
 fn required(fields : Map[String, Json], name : String) -> Json raise TaxError {
   match fields.get(name) {
     Some(value) => value
@@ -100,6 +119,12 @@ pub(all) struct WireInput {
   explain : Bool
   /// Ask for the gross that produces this first-month take-home.
   target_net : Int64?
+  /// Other comprehensive income, already reduced to its statutory inclusion.
+  other_income : Int64?
+  /// Tax already withheld on `other_income`.
+  other_prepaid : Int64?
+  /// Ask what a different monthly basic deduction would do to this payroll.
+  preview_basic : Int64?
 } derive(Eq)
 
 ///|
@@ -150,7 +175,22 @@ fn parse_input(source : String) -> WireInput raise TaxError {
     }
     None => None
   }
-  { year, inputs, bonus, explain, target_net, }
+  let other_income = opt_cents(fields, "other_income")
+  let other_prepaid = opt_cents(fields, "other_prepaid")
+  let preview_basic = match fields.get("preview") {
+    Some(value) => opt_cents(j_obj(value, "preview"), "basic_deduction")
+    None => None
+  }
+  {
+    year,
+    inputs,
+    bonus,
+    explain,
+    target_net,
+    other_income,
+    other_prepaid,
+    preview_basic,
+  }
 }
 
 ///|
@@ -241,6 +281,50 @@ pub fn run_report(source : String) -> String raise TaxError {
       buf.write_string(
         ",\"gross_up\":{\"target_net\":\{g.target_net},\"gross\":\{g.gross},\"net\":\{g.net},\"overshoot\":\{g.overshoot},\"exact\":\{g.exact}}",
       )
+    }
+    None => ()
+  }
+  // Annual settlement is opt-in: it needs other comprehensive income, which a
+  // wage-only payroll does not have.
+  match (input.other_income, input.other_prepaid) {
+    (None, None) => ()
+    (income, prepaid) => {
+      let other = match income {
+        Some(v) => v
+        None => 0L
+      }
+      let paid = match prepaid {
+        Some(v) => v
+        None => 0L
+      }
+      let s = annual_settlement(inputs, 0L, false, other, paid)
+      buf.write_string(
+        ",\"settlement\":{\"tax_due\":\{s.tax_due},\"prepaid\":\{s.prepaid},\"refund\":\{s.refund},\"payable\":\{s.payable},\"bonus_merged\":\{s.bonus_merged}}",
+      )
+    }
+  }
+  // What a different monthly basic deduction would do to this payroll.
+  match input.preview_basic {
+    Some(basic) => {
+      let baseline = default_rules()
+      let candidate = {
+        ..baseline,
+        version: "preview",
+        basic_deduction: basic,
+      }
+      let impact = policy_impact(baseline, candidate, inputs)
+      buf.write_string(
+        ",\"policy_impact\":{\"before_version\":\"\{impact.before_version}\",\"after_version\":\"\{impact.after_version}\",\"total_before\":\{impact.total_before},\"total_after\":\{impact.total_after},\"total_delta\":\{impact.total_delta},\"months\":[",
+      )
+      for i, m in impact.months {
+        if i > 0 {
+          buf.write_string(",")
+        }
+        buf.write_string(
+          "{\"month\":\{m.month},\"before\":\{m.before},\"after\":\{m.after},\"delta\":\{m.delta}}",
+        )
+      }
+      buf.write_string("]}")
     }
     None => ()
   }

@@ -16,11 +16,11 @@ WageKit 把"发工资要算的税"做成可验证的纯计算库：输入任职�
 | 专项附加 | 子女教育/婴幼儿/房贷/租房互斥校验/赡养/继续教育/大病医疗，逐项上限 |
 | 社保公积金 | 基数上下限 clamp、逐险种舍入；内置五城示例参数（标注 EXAMPLE） |
 | 其他所得 | 收入类型枚举：劳务报酬（20/30/40%）、稿酬（20%）、特许权使用费（20%），共享 800/80% 费用减除 |
-| 年度汇算 | 应退/应补分列输出；劳务报酬并入口径差产生真实退税场景 |
+| 年度汇算 | 应退/应补分列输出；劳务报酬并入口径差产生真实退税场景（JSON `other_income` / `other_prepaid` → `settlement`） |
 | 税后反推 | 给定到手金额求税前应发（`gross_up`）：分段函数求逆，分位台阶上取最小可行解，不可精确命中时报告超出几分 |
 | 税额分解 | 每月预扣追溯到底：第几档、什么税率、速算扣除数多少、完整算式（`explain`） |
 | 规则集注入 | 两张税率表 + 起征点 + 版本号打包为 `RuleSet`，可换一整套规则重算，不改引擎 |
-| 政策影响面 | 同一份工资在旧/新两版规则下逐月对比，输出每人每月增减（`policy_impact`） |
+| 政策影响面 | 同一份工资在旧/新两版规则下逐月对比，输出每人每月增减（`policy_impact`；JSON `preview` 试算起征点） |
 | 工资条 | Markdown 输出：应发、各项扣除、实发、累计口径 |
 | 确定性 | 同一输入产生逐字节相同的 JSON；规则表数据驱动、按年度版本化 |
 
@@ -54,7 +54,14 @@ WageKit 把"发工资要算的税"做成可验证的纯计算库：输入任职�
 
 ### 3. 劳务报酬并入伍算的退税
 
-劳务 1 万元按 20% 预扣 1,600 元；汇算并入综合所得后按年度税率重算——`annual_settlement` 输出应退 1,360 元。这是"预扣率 ≠ 年度税率"产生的真实退税，测试覆盖。
+劳务 1 万元按 20% 预扣 1,600 元；汇算并入综合所得后按年度税率重算——应退 1,360 元。这是"预扣率 ≠ 年度税率"产生的真实退税。
+
+```sh
+node bin/wagekit.mjs examples/settlement.json
+# {"settlement":{"tax_due":69000,"prepaid":205000,"refund":136000,"payable":0,...}}
+```
+
+`other_income` 要传**已按法定比例折算后**的金额（劳务报酬 80%），`other_prepaid` 是这笔钱已经预扣的税。
 
 ### 4. 工资条
 
@@ -90,6 +97,8 @@ node scripts/build.mjs
 node bin/wagekit.mjs examples/months.json          # JSON 报告
 node bin/wagekit.mjs examples/months.json --md     # 全年工资条（Markdown）
 node bin/wagekit.mjs examples/explain-grossup.json # 税额分解 + 反推
+node bin/wagekit.mjs examples/settlement.json      # 年度汇算：应退 1,360 元
+node bin/wagekit.mjs examples/policy-preview.json  # 起征点改 6,000 的影响面
 python tests/oracle.py 3000           # 独立 Decimal oracle，逐字段对比
 ```
 
@@ -97,7 +106,7 @@ oracle 的随机流固定覆盖**每一个税率跳档点**（年终奖按月度
 
 CI 在 Linux / macOS / Windows 上以 `--target all`（wasm / wasm-gc / js / native）执行以上全部检查。
 
-42 项单元测试 + 11 项 CLI 测试；每份报告都带 `rules` 字段（当前 `2026.1`），归档结果可追溯到确切的规则集。
+42 项单元测试 + 15 项 CLI 测试；每份报告都带 `rules` 字段（当前 `2026.1`），归档结果可追溯到确切的规则集。
 
 ## 批量性能（可复现）
 
