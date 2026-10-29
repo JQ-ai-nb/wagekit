@@ -1,6 +1,6 @@
 # WageKit
 
-MoonBit 薪酬计算与差异复核引擎。版本 0.2.0，MIT。
+MoonBit 薪酬计算与差异复核引擎。版本 0.2.1，MIT。
 
 [CI](https://github.com/JQ-ai-nb/wagekit/actions/workflows/ci.yml) · [Mooncakes](https://mooncakes.io/docs/JQ-ai-nb/wagekit) · [演示](https://jq-ai-nb.github.io/wagekit/web/)
 
@@ -72,7 +72,7 @@ node bin/audit.mjs examples/audit.csv --tolerance 0.01 --json
 ## MoonBit 库与 JSON 接口
 
 ```sh
-moon add JQ-ai-nb/wagekit@0.2.0
+moon add JQ-ai-nb/wagekit@0.2.1
 moon run examples/embed --target js
 node bin/wagekit.mjs examples/settlement.json
 node bin/wagekit.mjs examples/months.json --md

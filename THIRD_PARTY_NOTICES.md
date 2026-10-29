@@ -1,16 +1,15 @@
 # Third-Party Notices
 
-WageKit has **no third-party code dependencies**. The runtime dependency is:
+WageKit source is MIT. Its only runtime dependency is moonbitlang/core, the
+MoonBit standard library, licensed under Apache-2.0:
+https://github.com/moonbitlang/core
 
-- `moonbitlang/core` (Apache-2.0) — the MoonBit standard library, provided by
-  the toolchain; its license is distributed with the toolchain installation.
+The generated JavaScript embeds standard-library code. The upstream license
+and NOTICE are redistributed in third_party/ and web/licenses/; the build
+script also copies both into dist/licenses/. Keep those files when distributing
+the browser or CLI bundle. Upstream source comments retain their own notices.
 
-The bundled city social-insurance parameter table (`city_params()`) is example
-data authored for this project, not copied from any third-party source.
-
-The independent test oracle (`tests/oracle.py`) uses only the Python standard
-library (`decimal`, `random`, `json`, `subprocess`) and is test infrastructure,
-not a runtime dependency.
-
-Tax rules follow publicly available legislation and administrative documents;
-the implementation is original and no third-party implementation was ported.
+The city contribution values are synthetic examples, not an official dataset.
+The Decimal oracle uses the Python standard library and is test infrastructure.
+Tax calculations reference official public documents listed in docs/RULES.md.
+No source was copied from the related salary calculators in docs/COMPARISON.md.
