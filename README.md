@@ -111,10 +111,35 @@ CSV 列：`name,gross,social,special,other,bonus`，金额单位是**元**（可
 
 实测 **1,000 人 0.44 秒**（含生成 1,000 个文件落盘），单机、无并发。
 
+## 怎么嵌入（一个只用 pub 接口的消费端）
+
+`examples/embed/` 是一个独立包，**只 import `pub` 项、不碰内部实现**，并且由 CI 编译并运行。它能过，说明第三方拿到包就能用；哪天它编译不过，就是真的破坏了别人的构建。
+
+```moonbit
+let inputs : Array[@wagekit.MonthInput] = [
+  { gross: 3_000_000L, social: 300_000L, special: 100_000L, other: 0L },
+]
+let schedule = @wagekit.cumulative_withholding(inputs)          // 逐月预扣
+let why = @wagekit.explain_withholding(rules, inputs)           // 为什么是这个数
+let offer = @wagekit.gross_up(2_000_000L, 300_000L, 0L, 0L)     // 到手反推税前
+let impact = @wagekit.policy_impact(rules, candidate, inputs)    // 换版影响面
+```
+
+```sh
+moon run examples/embed
+# 本月预扣 630.00 元
+# 档位 1：21000.00 × 3% − 0.00 = 630.00
+# 到手 20000.00 元需要税前 23463.92 元（精确）
+# 起征点 6000：全年少扣 30.00 元
+```
+
+依赖方式：发布后 `moon add JQ-ai-nb/wagekit`；在同一 module 内则 `import { "JQ-ai-nb/wagekit/src" @wagekit }`。
+
 ## 验证
 
 ```sh
 moon check --target all --deny-warn   # 四目标零警告
+moon run examples/embed               # 嵌入示例（只用 pub 接口）
 moon test --deny-warn                 # 单元测试：临界点穷举、状态机不变量、舍入口径、反推往返
 node scripts/build.mjs
 node --test tests/cli.test.mjs tests/batch.test.mjs # 21 pass

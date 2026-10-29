@@ -1,0 +1,5 @@
+import {
+  "JQ-ai-nb/wagekit/src" @wagekit,
+}
+
+pkgtype(kind: "executable")
