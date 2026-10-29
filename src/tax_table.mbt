@@ -68,12 +68,18 @@ pub fn monthly_table() -> RateTable {
 ///|
 /// Index of the bracket a taxable amount falls into. `None` means the amount
 /// is not positive and no tax is due.
+///
+/// The top bracket has no upper bound: its entry in `upper` is a sentinel, so
+/// an amount above it must still resolve to the last bracket. Returning `None`
+/// there would silently tax a huge income at zero, which is the worst possible
+/// failure mode for a tax library.
 pub fn bracket(table : RateTable, taxable : Int64) -> Int32? {
   if taxable <= 0L {
     return None
   }
+  let last = table.upper.length() - 1
   for i, bound in table.upper {
-    if taxable <= bound {
+    if i == last || taxable <= bound {
       return Some(i)
     }
   }

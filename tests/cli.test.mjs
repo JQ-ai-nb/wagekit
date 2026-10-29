@@ -149,3 +149,15 @@ test('preview reports what a different basic deduction would cost',()=>{
   assert.equal(sum,impact.total_delta);
   assert.equal(impact.after_version,'preview');
 });
+
+test('absurdly large amounts are rejected instead of silently mis-taxed',()=>{
+  const result=run({year:2026,months:[{gross:900000000000000000,social:0,special:0,other:0}]});
+  assert.equal(result.status,2);
+  assert.match(JSON.parse(result.stdout).error,/out of range/);
+});
+
+test('the documented ceiling is inclusive',()=>{
+  const result=run({year:2026,months:[{gross:1000000000000,social:0,special:0,other:0}]});
+  assert.equal(result.status,0);
+  assert.equal(JSON.parse(result.stdout).ok,true);
+});

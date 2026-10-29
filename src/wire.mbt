@@ -38,6 +38,16 @@ fn j_cents(value : Json, what : String) -> Int64 raise TaxError {
       if cents.to_double() != n {
         fail("expected an integer number of cents for " + what)
       }
+      // Reject absurd magnitudes instead of letting the arithmetic overflow
+      // into a negative or zero tax figure.
+      if cents > MAX_AMOUNT || cents < -MAX_AMOUNT {
+        fail(
+          what +
+          " is out of range: at most " +
+          MAX_AMOUNT.to_string() +
+          " cents (10 billion yuan)",
+        )
+      }
       cents
     }
     _ => fail("expected JSON number for " + what)

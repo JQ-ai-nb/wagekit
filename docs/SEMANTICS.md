@@ -13,6 +13,15 @@ are reproducible and auditable.
 - Per-item social insurance shares are each rounded to a cent before summing
   (实务口径，与先合计后舍入可能相差 1 分，这里选择逐项舍入).
 
+## 金额范围（Amount range）
+
+单笔金额必须满足 `|cents| ≤ MAX_AMOUNT`（1e12 分 = 100 亿元）。超过即由线格式拒绝，
+不会进入计算。这个上界的存在理由很具体：`amount × 45%` 必须不能溢出 Int64，否则
+会静默得出负数或 0 税额——对税务库来说，给错数比报错糟得多。
+
+最高档在设计上没有上界：`upper` 的最后一项是哨兵值，`bracket()` 对任何更大的金额
+都返回最后一档。曾经这里返回 `None`，导致超大收入被按 0 征税，已修正并有测试锁定。
+
 ## 累计预扣预缴（Cumulative withholding）
 
 For month k of N:

@@ -16,6 +16,8 @@ pub const LOAN_MONTHLY : Int64 = 100_000
 
 pub const MAJOR_MEDICAL_YEAR_CAP : Int64 = 8_000_000
 
+pub const MAX_AMOUNT : Int64 = 1_000_000_000_000
+
 pub const RULES_VERSION : String = "2026.1"
 
 pub fn annual_settlement(Array[MonthInput], Int64, Bool, Int64, Int64) -> Settlement

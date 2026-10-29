@@ -29,3 +29,13 @@ test "the annual table never jumps by more than a fen at an edge" {
     assert_eq(over - at <= 1L, true)
   }
 }
+
+///|
+test "an amount above the last sentinel still uses the top bracket" {
+  // The sentinel in `upper` is Int64::max/100, so an income above it used to
+  // fall out of the table and be taxed at zero - a silent wrong answer.
+  let table = annual_table()
+  assert_eq(bracket(table, 900_000_000_000_000_000L), Some(6))
+  let taxable = 100_000_000_000L
+  assert_eq(tax_of(table, taxable), mul_percent(taxable, 45) - 18_192_000L)
+}

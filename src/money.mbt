@@ -26,6 +26,13 @@ pub fn yuan_text(cents : Int64) -> String {
 }
 
 ///|
+/// Ceiling for any single amount, in cents: 1e12 cents = 10 billion yuan.
+/// Chosen well above any real payroll and low enough that `amount * 45`
+/// (the top rate) cannot overflow Int64. Inputs above it are rejected rather
+/// than silently mis-taxed.
+pub const MAX_AMOUNT : Int64 = 1_000_000_000_000L
+
+///|
 /// Clamp a value into [lower, upper]. Both bounds are inclusive.
 pub fn clamp_cents(value : Int64, lower : Int64, upper : Int64) -> Int64 {
   if value < lower {

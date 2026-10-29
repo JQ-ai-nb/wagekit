@@ -617,7 +617,7 @@ const _M0FPB4seed = _M0FPB12random__seed();
 const _M0FPC28internal7strconv17parse__scientificN8exp__numS471 = 0n;
 const _M0FPC28internal7strconv17check__underscoreN25_2atransition__table__222S574 = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 5, 5, 5, 5, 5, 0, 1, 2, 5];
 const _M0FPC28internal7strconv15parse__inf__nanN25_2atransition__table__304S550 = [14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 3, 4, 14, 14, 14, 14, 14, 14, 14, 7, 14, 14, 14, 14, 5, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 6, 14, 14, 14, 0, 14, 14, 14, 14, 14, 14, 14, 14, 14, 8, 14, 14, 14, 14, 14, 1, 14, 14, 9, 14, 14, 14, 14, 14, 14, 14, 14, 10, 14, 14, 14, 14, 14, 14, 11, 14, 14, 14, 14, 14, 14, 14, 14, 14, 12, 14, 14, 14, 14, 14, 14, 14, 14, 13, 14, 1, 14, 14, 14, 14, 14, 14, 14];
-const _M0FP312JQ_2dai_2dnb7wagekit3src11run__reportN6recordS1359 = new _M0TP312JQ_2dai_2dnb7wagekit3src10MonthInput(0n, 0n, 0n, 0n);
+const _M0FP312JQ_2dai_2dnb7wagekit3src11run__reportN6recordS1360 = new _M0TP312JQ_2dai_2dnb7wagekit3src10MonthInput(0n, 0n, 0n, 0n);
 function _M0FPB13consume4__acc(acc, input) {
   const _p = (acc >>> 0) + ((Math.imul(input, -1028477379) | 0) >>> 0) | 0;
   const _p$2 = 17;
@@ -4318,6 +4318,7 @@ function _M0FP312JQ_2dai_2dnb7wagekit3src7bracket(table, taxable) {
   if (BigInt.asIntN(64, taxable) <= BigInt.asIntN(64, 0n)) {
     return undefined;
   }
+  const last = table.upper.length - 1 | 0;
   const _bind = table.upper;
   const _bind$2 = _bind.length;
   let _tmp = 0;
@@ -4325,7 +4326,7 @@ function _M0FP312JQ_2dai_2dnb7wagekit3src7bracket(table, taxable) {
     const i = _tmp;
     if (i < _bind$2) {
       const bound = _bind[i];
-      if (BigInt.asIntN(64, taxable) <= BigInt.asIntN(64, bound)) {
+      if (i === last || BigInt.asIntN(64, taxable) <= BigInt.asIntN(64, bound)) {
         return i;
       }
       _tmp = i + 1 | 0;
@@ -4447,6 +4448,15 @@ function _M0FP312JQ_2dai_2dnb7wagekit3src8j__cents(value, what) {
     const cents = $i64_trunc_f64(_n);
     if ($f64_convert_i64(BigInt.asIntN(64, cents)) !== _n) {
       const _bind = _M0FP312JQ_2dai_2dnb7wagekit3src4failGuE(`expected an integer number of cents for ${what}`);
+      if (_bind.$tag === 1) {
+        const _ok = _bind;
+        _ok._0;
+      } else {
+        return _bind;
+      }
+    }
+    if (BigInt.asIntN(64, cents) > BigInt.asIntN(64, 1000000000000n) || BigInt.asIntN(64, cents) < BigInt.asIntN(64, 18446743073709551616n)) {
+      const _bind = _M0FP312JQ_2dai_2dnb7wagekit3src4failGuE(`${what} is out of range: at most ${_M0MPC15int645Int6418to__string_2einner(1000000000000n, 10)} cents (10 billion yuan)`);
       if (_bind.$tag === 1) {
         const _ok = _bind;
         _ok._0;
@@ -5351,7 +5361,7 @@ function _M0FP312JQ_2dai_2dnb7wagekit3src11run__report(source) {
   } else {
     const _Some = _bind$4;
     const _target = _Some;
-    const profile = inputs.length > 0 ? _M0MPC15array5Array2atGRP312JQ_2dai_2dnb7wagekit3src10MonthInputE(inputs, 0) : _M0FP312JQ_2dai_2dnb7wagekit3src11run__reportN6recordS1359;
+    const profile = inputs.length > 0 ? _M0MPC15array5Array2atGRP312JQ_2dai_2dnb7wagekit3src10MonthInputE(inputs, 0) : _M0FP312JQ_2dai_2dnb7wagekit3src11run__reportN6recordS1360;
     const g = _M0FP312JQ_2dai_2dnb7wagekit3src9gross__up(_target, profile.social, profile.special, profile.other);
     const _string_builder$2 = _M0MPB13StringBuilder21StringBuilder_2einner(65);
     _M0IPB13StringBuilderPB6Logger13write__string(_string_builder$2, ",\"gross_up\":{\"target_net\":");
