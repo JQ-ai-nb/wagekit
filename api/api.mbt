@@ -1,15 +1,15 @@
 ///|
-/// Stable JavaScript-facing entry point. Thin on purpose: the rules live in
-/// the core package, this file only converts a raised TaxError into the wire
-/// error object.
+/// Stable JavaScript facades; domain logic remains in the MoonBit core.
 pub fn run(source : String) -> String {
   @wagekit.run_report(source) catch {
-    TaxError(message) => "{\"ok\":false,\"error\":\"\{message}\"}"
+    TaxError(message) => {
+      let error : Json = { "ok": false, "error": Json::string(message) }
+      error.stringify()
+    }
   }
 }
 
 ///|
-/// Full-year payslip in Markdown: one slip per month plus the bonus report.
 pub fn run_payslip(source : String) -> String {
   @wagekit.run_payslip_report(source) catch {
     TaxError(message) => "error: \{message}"
@@ -17,7 +17,16 @@ pub fn run_payslip(source : String) -> String {
 }
 
 ///|
-/// Native/wasm builds need an entry point when `link` options are present.
+pub fn audit(source : String) -> String {
+  @wagekit.run_audit_report(source) catch {
+    TaxError(message) => {
+      let error : Json = { "ok": false, "error": Json::string(message) }
+      error.stringify()
+    }
+  }
+}
+
+///|
 fn main {
   ()
 }

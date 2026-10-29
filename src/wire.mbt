@@ -33,7 +33,14 @@ fn j_array(value : Json, what : String) -> Array[Json] raise TaxError {
 /// Parse a JSON number that must be an integer count of cents.
 fn j_cents(value : Json, what : String) -> Int64 raise TaxError {
   match value {
-    Number(n, ..) => {
+    Number(n, repr~) => {
+      match repr {
+        Some(text) =>
+          if text.contains(".") || text.contains("e") || text.contains("E") {
+            fail("amount must be a plain integer number of cents")
+          }
+        None => ()
+      }
       let cents = n.to_int64()
       if cents.to_double() != n {
         fail("expected an integer number of cents for " + what)
@@ -138,10 +145,16 @@ pub(all) struct WireInput {
   /// Basic-deduction months for the settlement figure; omitted = follow the
   /// number of months supplied.
   deduction_months : Int32?
+  annual_complete : Bool
+  annual_deductions : Int64
+  salary_prepaid : Int64?
 } derive(Eq)
 
 ///|
 fn parse_input(source : String) -> WireInput raise TaxError {
+  if source.length() > 8_000_000 {
+    fail("JSON input is too large")
+  }
   let document = @json.parse(
     source,
     max_nesting_depth=16,
@@ -155,8 +168,8 @@ fn parse_input(source : String) -> WireInput raise TaxError {
     Some(value) => j_int(value, "year")
     None => 2026
   }
-  if year < 2000 || year > 2100 {
-    fail("year must be within 2000..2100")
+  if year != 2026 {
+    fail("only year 2026 is supported by the bundled rules")
   }
   let inputs = j_array(required(fields, "months"), "months").map(read_month)
   if inputs.length() > 12 {
@@ -197,12 +210,34 @@ fn parse_input(source : String) -> WireInput raise TaxError {
   let deduction_months = match fields.get("deduction_months") {
     Some(value) => {
       let months = j_int(value, "deduction_months")
-      if months < 1 || months > 12 {
-        fail("deduction_months must be within 1..12")
+      if months != 12 {
+        fail("resident annual settlement requires deduction_months=12")
       }
       Some(months)
     }
     None => None
+  }
+  let annual_complete = match fields.get("annual_complete") {
+    Some(True) => true
+    Some(False) | None => false
+    _ => fail("annual_complete must be a boolean")
+  }
+  let annual_deductions = match opt_cents(fields, "annual_deductions") {
+    Some(v) => v
+    None => 0L
+  }
+  let salary_prepaid = opt_cents(fields, "salary_prepaid")
+  if !annual_complete &&
+    (
+      other_income is Some(_) ||
+      other_prepaid is Some(_) ||
+      annual_deductions > 0L ||
+      salary_prepaid is Some(_) ||
+      deduction_months is Some(_)
+    ) {
+    fail(
+      "annual_complete=true is required for annual settlement; supply all annual income and deductions",
+    )
   }
   {
     year,
@@ -214,6 +249,9 @@ fn parse_input(source : String) -> WireInput raise TaxError {
     other_prepaid,
     preview_basic,
     deduction_months,
+    annual_complete,
+    annual_deductions,
+    salary_prepaid,
   }
 }
 
@@ -236,9 +274,27 @@ pub fn run_payslip_report(source : String) -> String raise TaxError {
   buf.write_string(render_year_summary(summarize(input.inputs, results)))
   match input.bonus {
     Some(bonus) => {
-      let choice = bonus_compare(bonus, input.inputs)
       buf.write_string("\n---\n\n")
-      buf.write_string(render_bonus_report(choice))
+      if input.annual_complete {
+        let other_income = match input.other_income {
+          Some(v) => v
+          None => 0L
+        }
+        let choice = bonus_compare_under(
+          default_rules(),
+          bonus,
+          input.inputs,
+          other_income~,
+          annual_deductions=input.annual_deductions,
+        )
+        buf.write_string(render_bonus_report(choice))
+      } else {
+        buf.write_string(
+          "年终奖单独计税试算：" +
+          yuan_text(bonus_standalone(bonus)) +
+          " 元；全年数据未确认，不给出合并计税建议。\n",
+        )
+      }
     }
     None => ()
   }
@@ -275,10 +331,27 @@ pub fn run_report(source : String) -> String raise TaxError {
   buf.write_string("],\"total_withheld\":\{total_withheld(results)}")
   match input.bonus {
     Some(bonus) => {
-      let choice = bonus_compare(bonus, inputs)
-      buf.write_string(
-        ",\"bonus\":{\"amount\":\{bonus},\"standalone_tax\":\{choice.standalone_tax},\"combined_extra_tax\":\{choice.combined_extra_tax},\"best\":\"\{choice.best}\"}",
-      )
+      let standalone = bonus_standalone(bonus)
+      if input.annual_complete {
+        let other_income = match input.other_income {
+          Some(v) => v
+          None => 0L
+        }
+        let choice = bonus_compare_under(
+          default_rules(),
+          bonus,
+          inputs,
+          other_income~,
+          annual_deductions=input.annual_deductions,
+        )
+        buf.write_string(
+          ",\"bonus\":{\"amount\":\{bonus},\"standalone_tax\":\{standalone},\"combined_extra_tax\":\{choice.combined_extra_tax},\"best\":\"\{choice.best}\"}",
+        )
+      } else {
+        buf.write_string(
+          ",\"bonus\":{\"amount\":\{bonus},\"standalone_tax\":\{standalone},\"combined_extra_tax\":null,\"best\":\"needs_annual_data\"}",
+        )
+      }
     }
     None => buf.write_string(",\"bonus\":null")
   }
@@ -302,41 +375,46 @@ pub fn run_report(source : String) -> String raise TaxError {
         { gross: 0L, social: 0L, special: 0L, other: 0L, }
       }
       let g = gross_up(target, profile.social, profile.special, profile.other)
+      if g.gross > MAX_AMOUNT {
+        fail("gross-up result exceeds supported amount")
+      }
       buf.write_string(
         ",\"gross_up\":{\"target_net\":\{g.target_net},\"gross\":\{g.gross},\"net\":\{g.net},\"overshoot\":\{g.overshoot},\"exact\":\{g.exact}}",
       )
     }
     None => ()
   }
-  // Annual settlement is opt-in: it needs other comprehensive income, which a
-  // wage-only payroll does not have.
-  match (input.other_income, input.other_prepaid) {
-    (None, None) => ()
-    (income, prepaid) => {
-      let other = match income {
-        Some(v) => v
-        None => 0L
-      }
-      let paid = match prepaid {
-        Some(v) => v
-        None => 0L
-      }
-      let s = match input.deduction_months {
-        Some(months) =>
-          annual_settlement(
-            inputs,
-            0L,
-            false,
-            other,
-            paid,
-            deduction_months=months,
-          )
-        None => annual_settlement(inputs, 0L, false, other, paid)
-      }
-      buf.write_string(
-        ",\"settlement\":{\"tax_due\":\{s.tax_due},\"prepaid\":\{s.prepaid},\"refund\":\{s.refund},\"payable\":\{s.payable},\"bonus_merged\":\{s.bonus_merged}}",
-      )
+  // Annual results require an explicit complete-year declaration.
+  if input.annual_complete {
+    let other = match input.other_income {
+      Some(v) => v
+      None => 0L
     }
+    let paid = match input.other_prepaid {
+      Some(v) => v
+      None => 0L
+    }
+    let salary_paid = match input.salary_prepaid {
+      Some(v) => v
+      None => total_withheld(results)
+    }
+    let source = if input.salary_prepaid is Some(_) {
+      "provided"
+    } else {
+      "modeled"
+    }
+    let s = annual_settlement(
+      inputs,
+      0L,
+      false,
+      other,
+      paid,
+      salary_prepaid=salary_paid,
+      annual_deductions=input.annual_deductions,
+    )
+    buf.write_string(
+      ",\"settlement\":{\"tax_due\":\{s.tax_due},\"prepaid\":\{s.prepaid},\"refund\":\{s.refund},\"payable\":\{s.payable},\"bonus_merged\":false,\"prepaid_source\":\"\{source}\"}",
+    )
   }
   // What a different monthly basic deduction would do to this payroll.
   match input.preview_basic {

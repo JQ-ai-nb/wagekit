@@ -89,3 +89,31 @@ pub fn employee_social(params : CityParams, gross : Int64) -> Int64 {
   mul_percent(base, params.unemployment_rate) +
   mul_percent(base, params.fund_rate)
 }
+
+///|
+/// General per-item contribution. Each item owns its base bounds, basis-point
+/// rate (50 means 0.5%), and fixed cent charge. Bundled city examples are not
+/// current legal parameters; verified parameters must come from the caller.
+pub(all) struct Contribution {
+  base_lower : Int64
+  base_upper : Int64
+  rate_bp : Int32
+  fixed : Int64
+} derive(Eq)
+
+///|
+pub fn contribution(item : Contribution, base : Int64) -> Int64 raise TaxError {
+  if base < 0L ||
+    base > MAX_AMOUNT ||
+    item.base_lower < 0L ||
+    item.base_upper < item.base_lower ||
+    item.base_upper > MAX_AMOUNT ||
+    item.rate_bp < 0 ||
+    item.rate_bp > 10000 ||
+    item.fixed < 0L ||
+    item.fixed > MAX_AMOUNT {
+    fail("invalid contribution parameters")
+  }
+  let clamped = clamp_cents(base, item.base_lower, item.base_upper)
+  (clamped * item.rate_bp.to_int64() + 5000L) / 10000L + item.fixed
+}

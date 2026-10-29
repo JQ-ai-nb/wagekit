@@ -22,7 +22,7 @@ if(positional.length!==1){console.error(usage);process.exit(2);}
 const inputPath=resolve(positional[0]);
 let documentText;
 try{
-  documentText=JSON.stringify(JSON.parse(readFileSync(inputPath,'utf8')));
+  documentText=readFileSync(inputPath,'utf8');
 }catch(error){
   // Machine-readable on stdout, human hint on stderr: same contract as every
   // other failure, so `node bin/wagekit.mjs x.json | jq .ok` never sees empty.

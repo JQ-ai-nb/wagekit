@@ -2,7 +2,7 @@
 test "report carries the rule-set version" {
   let doc = "{\"year\":2026,\"months\":[{\"gross\":1000000,\"social\":0,\"special\":0,\"other\":0}]}"
   let report = run_report(doc)
-  assert_eq(report.contains("\"rules\":\"2026.1\""), true)
+  assert_eq(report.contains("\"rules\":\"CN-resident-2026.2\""), true)
   assert_eq(report.contains("\"ok\":true"), true)
 }
 

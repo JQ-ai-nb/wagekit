@@ -1,10 +1,9 @@
 ///|
 /// The inverse question. Forward payroll answers "what do I take home on a
 /// 30 000 gross?"; hiring and retention answer the other direction: "the offer
-/// promises 25 000 net, what gross do I put in the contract?" Because tax is
-/// piecewise linear with cent rounding, not every net value is attainable —
-/// so the honest answer is the smallest gross that reaches the target, plus
-/// how far past it the employee actually lands.
+/// promises a first-period net, what gross is needed with fixed deductions?
+/// Rounding creates repeated net values, not missing cent values under the
+/// default continuous progressive table. Return the smallest feasible gross.
 
 ///|
 pub(all) struct GrossUp {

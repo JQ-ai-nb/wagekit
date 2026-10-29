@@ -37,8 +37,8 @@ pub const BASIC_DEDUCTION : Int64 = 500_000L
 ///|
 /// Run the cumulative withholding schedule over a list of monthly inputs.
 /// Month 1 is the first entry; withholding for month k is
-/// `tax_cum(k) - tax_cum(k-1)` clamped at zero (over-withheld tax carries
-/// forward as credit, per the cumulative method).
+/// `tax_cum(k) - sum(withholding before k)` clamped at zero.
+/// Falling tax liability never erases amounts already withheld.
 pub fn cumulative_withholding(inputs : Array[MonthInput]) -> Array[MonthResult] {
   withholding_under(default_rules(), inputs)
 }

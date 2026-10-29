@@ -1,73 +1,62 @@
 ///|
-/// Annual settlement (年度汇算): reconcile the year's cumulative withholding
-/// against the annual liability. Refunds and extra payments are reported
-/// separately so callers never guess the sign.
-
-///|
 pub(all) struct Settlement {
-  /// Annual tax due on comprehensive income (excluding a standalone bonus).
   tax_due : Int64
-  /// Total actually withheld during the year.
   prepaid : Int64
-  /// Positive when the taxpayer overpaid and is due a refund.
   refund : Int64
-  /// Positive when the taxpayer underpaid and must pay more.
   payable : Int64
-  /// Whether the bonus was merged into comprehensive income in this figure.
   bonus_merged : Bool
 } derive(Eq)
 
 ///|
-/// Reconcile a year from the raw monthly components — the authoritative path.
-/// `bonus_merged` decides whether the bonus is already part of the monthly
-/// inputs (true) or taxed standalone outside this figure (false; the standalone
-/// tax must then be settled separately and is NOT part of the refund/payable
-/// calculation here).
-///
-/// `deduction_months` decides how many months of basic deduction this figure
-/// is entitled to:
-///
-/// - omitted — follow the data: N months supplied means N months deducted.
-///   This keeps the settlement consistent with the withholding that produced
-///   `prepaid`, and is the right choice for a full year (12 in, 12 deducted)
-///   or for an in-year departure settled on the months actually worked.
-/// - `12` — the resident individual's statutory 60 000 yuan/year, even when
-///   fewer months of income are supplied. Use this for a true annual
-///   reconciliation of someone who was a resident all year but only had
-///   partial income.
-///
-/// The two differ by real money, so the convention is a parameter rather than
-/// something the engine decides silently.
-pub fn annual_settlement(
+/// Resident annual liability. Other income is already reduced to statutory
+/// inclusion. Annual deductions exclude amounts already deducted in months.
+fn annual_liability(
+  rules : RuleSet,
+  inputs : Array[MonthInput],
+  merged_bonus : Int64,
+  other_income : Int64,
+  annual_deductions : Int64,
+) -> Int64 {
+  let mut taxable = other_income +
+    merged_bonus -
+    rules.basic_deduction * 12L -
+    annual_deductions
+  for input in inputs {
+    taxable = taxable + input.gross - input.social - input.special - input.other
+  }
+  tax_of(rules.annual, taxable)
+}
+
+///|
+/// Bonus is additional to input wages, included once if bonus_merged.
+/// Supply salary_prepaid for actual reconciliation; otherwise paid tax is a
+/// model estimate. Annual resident deduction always covers twelve months.
+pub fn annual_settlement_under(
+  rules : RuleSet,
   inputs : Array[MonthInput],
   bonus : Int64,
   bonus_merged : Bool,
   other_income : Int64,
   other_prepaid : Int64,
-  deduction_months? : Int32,
+  salary_prepaid? : Int64,
+  annual_deductions~ : Int64 = 0L,
 ) -> Settlement {
-  let results = cumulative_withholding(inputs)
-  let prepaid = total_withheld(results) + other_prepaid
-  let months = match deduction_months {
-    Some(m) => if m < 0 { 0 } else { m }
-    None => inputs.length()
-  }
-  let mut comprehensive = 0L
-  let mut deductions = 0L
-  for input in inputs {
-    comprehensive = comprehensive + input.gross
-    deductions = deductions + input.social + input.special + input.other
-  }
-  let base_deduction = BASIC_DEDUCTION * months.to_int64()
-  let merged_bonus = if bonus_merged { bonus } else { 0L }
-  // Other comprehensive income (labor remuneration, royalties...) arrives
-  // already reduced to its 70-80% statutory inclusion and adds here.
-  let taxable = comprehensive +
-    other_income +
-    merged_bonus -
-    base_deduction -
-    deductions
-  let tax_due = tax_of(annual_table(), taxable)
+  let prepaid = (match salary_prepaid {
+      Some(paid) => paid
+      None => total_withheld(withholding_under(rules, inputs))
+    }) +
+    other_prepaid
+  let tax_due = annual_liability(
+    rules,
+    inputs,
+    if bonus_merged {
+      bonus
+    } else {
+      0L
+    },
+    other_income,
+    annual_deductions,
+  )
   let diff = prepaid - tax_due
   {
     tax_due,
@@ -83,5 +72,40 @@ pub fn annual_settlement(
       0L
     },
     bonus_merged,
+  }
+}
+
+///|
+pub fn annual_settlement(
+  inputs : Array[MonthInput],
+  bonus : Int64,
+  bonus_merged : Bool,
+  other_income : Int64,
+  other_prepaid : Int64,
+  salary_prepaid? : Int64,
+  annual_deductions~ : Int64 = 0L,
+) -> Settlement {
+  match salary_prepaid {
+    Some(paid) =>
+      annual_settlement_under(
+        default_rules(),
+        inputs,
+        bonus,
+        bonus_merged,
+        other_income,
+        other_prepaid,
+        salary_prepaid=paid,
+        annual_deductions~,
+      )
+    None =>
+      annual_settlement_under(
+        default_rules(),
+        inputs,
+        bonus,
+        bonus_merged,
+        other_income,
+        other_prepaid,
+        annual_deductions~,
+      )
   }
 }

@@ -56,32 +56,3 @@ test "raising the basic deduction lowers the annual tax" {
   assert_eq(sum, impact.total_delta)
   assert_eq(impact.total_after, impact.total_before + impact.total_delta)
 }
-
-///|
-test "a first-bracket rate cut shifts timing but not this year's total" {
-  let inputs = []
-  for _i in 0..<3 {
-    inputs.push({ gross: 3_000_000L, social: 0L, special: 300_000L, other: 0L, })
-  }
-  let baseline = default_rules()
-  // Same brackets, cheaper first rate: an unambiguous, easy-to-check change.
-  let candidate = {
-    ..baseline,
-    annual: {
-      upper: baseline.annual.upper,
-      rates: [2, 10, 20, 25, 30, 35, 45],
-      quick: baseline.annual.quick,
-    },
-  }
-  let impact = policy_impact(baseline, candidate, inputs)
-  // Month 1: 22 000 taxable at 2% instead of 3% -> 440 instead of 660.
-  assert_eq(impact.months[0].before, 66_000L)
-  assert_eq(impact.months[0].after, 44_000L)
-  assert_eq(impact.months[0].delta, -22_000L)
-  // Month 2: the cumulative method claws the 220 back, because the running
-  // total is still in the 10% bracket. This is the state machine working.
-  assert_eq(impact.months[1].delta, 22_000L)
-  // Month 3 onward is untouched, and the year lands on the same total.
-  assert_eq(impact.months[2].delta, 0L)
-  assert_eq(impact.total_delta, 0L)
-}

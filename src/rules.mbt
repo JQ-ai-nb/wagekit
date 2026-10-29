@@ -6,7 +6,7 @@
 
 ///|
 pub(all) struct RuleSet {
-  /// Version string carried into every report, e.g. "2026.1".
+  /// Version string carried into every report, e.g. "CN-resident-2026.2".
   version : String
   /// Monthly basic deduction (5 000 yuan in the 2026 edition).
   basic_deduction : Int64
@@ -37,7 +37,7 @@ pub fn withholding_under(
   let results = []
   let mut cum_gross = 0L
   let mut cum_deduct = 0L
-  let mut prev_tax = 0L
+  let mut paid = 0L
   for k, input in inputs {
     cum_gross = cum_gross + input.gross
     cum_deduct = cum_deduct +
@@ -47,10 +47,10 @@ pub fn withholding_under(
       input.other
     let taxable = cum_gross - cum_deduct
     let tax_cum = tax_of(rules.annual, taxable)
-    let diff = tax_cum - prev_tax
+    let diff = tax_cum - paid
     let withheld = if diff < 0L { 0L } else { diff }
     results.push({ month: k + 1, taxable_cum: taxable, tax_cum, withheld, })
-    prev_tax = tax_cum
+    paid = paid + withheld
   }
   results
 }

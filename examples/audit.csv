@@ -1,0 +1,5 @@
+employee_id,year,period,gross,social,special,other,actual_withheld
+E001,2026,1,15000,0,0,0,300
+E001,2026,2,0,0,0,0,0
+E001,2026,3,15000,0,0,0,300
+E002,2026,1,20000,2000,0,0,390

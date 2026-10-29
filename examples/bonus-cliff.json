@@ -1,14 +1,79 @@
-{"year":2026,"months":[
-  {"gross":2000000,"social":300000,"special":100000,"other":0},
-  {"gross":2000000,"social":300000,"special":100000,"other":0},
-  {"gross":2000000,"social":300000,"special":100000,"other":0},
-  {"gross":2000000,"social":300000,"special":100000,"other":0},
-  {"gross":2000000,"social":300000,"special":100000,"other":0},
-  {"gross":2000000,"social":300000,"special":100000,"other":0},
-  {"gross":2000000,"social":300000,"special":100000,"other":0},
-  {"gross":2000000,"social":300000,"special":100000,"other":0},
-  {"gross":2000000,"social":300000,"special":100000,"other":0},
-  {"gross":2000000,"social":300000,"special":100000,"other":0},
-  {"gross":2000000,"social":300000,"special":100000,"other":0},
-  {"gross":2000000,"social":300000,"special":100000,"other":0}
-],"bonus":3600100}
+{
+  "year": 2026,
+  "months": [
+    {
+      "gross": 2000000,
+      "social": 300000,
+      "special": 100000,
+      "other": 0
+    },
+    {
+      "gross": 2000000,
+      "social": 300000,
+      "special": 100000,
+      "other": 0
+    },
+    {
+      "gross": 2000000,
+      "social": 300000,
+      "special": 100000,
+      "other": 0
+    },
+    {
+      "gross": 2000000,
+      "social": 300000,
+      "special": 100000,
+      "other": 0
+    },
+    {
+      "gross": 2000000,
+      "social": 300000,
+      "special": 100000,
+      "other": 0
+    },
+    {
+      "gross": 2000000,
+      "social": 300000,
+      "special": 100000,
+      "other": 0
+    },
+    {
+      "gross": 2000000,
+      "social": 300000,
+      "special": 100000,
+      "other": 0
+    },
+    {
+      "gross": 2000000,
+      "social": 300000,
+      "special": 100000,
+      "other": 0
+    },
+    {
+      "gross": 2000000,
+      "social": 300000,
+      "special": 100000,
+      "other": 0
+    },
+    {
+      "gross": 2000000,
+      "social": 300000,
+      "special": 100000,
+      "other": 0
+    },
+    {
+      "gross": 2000000,
+      "social": 300000,
+      "special": 100000,
+      "other": 0
+    },
+    {
+      "gross": 2000000,
+      "social": 300000,
+      "special": 100000,
+      "other": 0
+    }
+  ],
+  "bonus": 3600100,
+  "annual_complete": true
+}

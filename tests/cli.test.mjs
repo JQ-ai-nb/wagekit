@@ -23,6 +23,7 @@ const threeMonths = {
     {gross: 3000000, social: 0, special: 300000, other: 0},
   ],
   bonus: 3600000,
+  annual_complete: true,
 };
 
 test('cumulative withholding matches the schedule', () => {
@@ -75,7 +76,7 @@ test('negative amounts are rejected at the wire',()=>{
 test('out-of-range years are rejected',()=>{
   const result=run({year:2200,months:[{gross:100,social:0,special:0,other:0}]});
   assert.equal(result.status,2);
-  assert.match(JSON.parse(result.stdout).error,/2000\.\.2100/);
+  assert.match(JSON.parse(result.stdout).error,/only year 2026/);
 });
 
 test('more than twelve months is rejected',()=>{
@@ -120,17 +121,18 @@ test('settlement reconciles other income and reports the refund',()=>{
   const report=JSON.parse(run({
     year:2026,
     months:[{gross:2000000,social:0,special:0,other:0}],
+    annual_complete:true,
     other_income:800000,
     other_prepaid:160000,
   }).stdout);
-  assert.equal(report.settlement.tax_due,69000);
+  assert.equal(report.settlement.tax_due,0);
   assert.equal(report.settlement.prepaid,205000);
-  assert.equal(report.settlement.refund,136000);
+  assert.equal(report.settlement.refund,205000);
   assert.equal(report.settlement.payable,0);
 });
 
 test('settlement stays absent on a wage-only payroll',()=>{
-  assert.equal(JSON.parse(run(threeMonths).stdout).settlement,undefined);
+  assert.equal(JSON.parse(run({...threeMonths,annual_complete:false}).stdout).settlement,undefined);
 });
 
 test('negative other income is rejected',()=>{
@@ -162,18 +164,9 @@ test('the documented ceiling is inclusive',()=>{
   assert.equal(JSON.parse(result.stdout).ok,true);
 });
 
-test('deduction_months switches between the two settlement conventions',()=>{
-  const base={year:2026,months:[{gross:2000000,social:0,special:0,other:0}],other_income:800000,other_prepaid:160000};
-  const prorated=JSON.parse(run(base).stdout).settlement;
-  const statutory=JSON.parse(run({...base,deduction_months:12}).stdout).settlement;
-  assert.equal(prorated.tax_due,69000);
-  assert.equal(prorated.refund,136000);
-  assert.equal(statutory.tax_due,0);
-  assert.equal(statutory.refund,205000);
-});
-
-test('deduction_months outside 1..12 is rejected',()=>{
-  const result=run({year:2026,months:[],deduction_months:13});
-  assert.equal(result.status,2);
-  assert.match(JSON.parse(result.stdout).error,/1\.\.12/);
+test('resident settlement rejects prorated annual basic deductions',()=>{
+  const base={year:2026,annual_complete:true,months:[{gross:2000000,social:0,special:0,other:0}],other_income:800000,other_prepaid:160000};
+  const normal=JSON.parse(run(base).stdout).settlement;
+  assert.equal(normal.tax_due,0);assert.equal(normal.refund,205000);
+  assert.equal(run({...base,deduction_months:1}).status,2);
 });

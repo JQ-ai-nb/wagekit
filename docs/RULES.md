@@ -1,62 +1,21 @@
-# Rules and Data Versioning
+# 规则来源与版本边界
 
-The engine and the rules are **strictly separated**. Everything a policy
-change touches lives in data tables or parameter structs; the engine only
-implements formulas. This page is the audit surface.
+核对日期：2026-10-29。内置版本CN-resident-2026.2仅用于2026年居民普通工资累计预扣。
+以下链接是口径来源；代码及测试的推导不替代官方解释或申报系统。
 
-## 所得税税率表（Progressive tables）
-
-| 表 | 位置 | 内容 |
+| 内容 | 官方来源 | 实现 |
 | --- | --- | --- |
-| 综合所得年度表 | `annual_table()` in `src/tax_table.mbt` | 7 级：36,000 / 144,000 / 300,000 / 420,000 / 660,000 / 960,000 元，税率 3%–45%，速算扣除 0–181,920 元 |
-| 按月换算表（年终奖） | `monthly_table()` | 7 级：3,000 / 12,000 / 25,000 / 35,000 / 55,000 / 80,000 元，速算扣除 0–15,160 元 |
+| 综合所得税率、年度减除费用6万元 | [个人所得税法](https://www.chinatax.gov.cn/chinatax/n810219/n810744/n3752930/n3752974/c3970366/content.html)第六条、税率表一 | tax_table.mbt、settlement.mbt |
+| 当期应扣减去累计已预扣、负差暂不退 | [2018年第61号第六条的税务问答](https://liaoning.chinatax.gov.cn/art/2020/12/31/art_99_54414.html) | rules.mbt、audit.mbt |
+| 奖金除12选月表、单独计税或并入、政策有效期 | [财政部税务总局2023年第30号](https://jiangsu.chinatax.gov.cn/art/2023/8/28/art_8349_432405.html)，执行至2027-12-31 | bonus.mbt |
+| 只工作部分月份仍可年度减除6万元 | [上海税务年度汇算问答](https://shanghai.chinatax.gov.cn/zcfw/rdwd/202404/t471515.html) | settlement.mbt |
+| 大病医疗超1.5万元部分，8万元限额，年度汇算扣除 | [税务问答](https://jiangsu.chinatax.gov.cn/art/2023/11/10/art_9280_439902.html) | special_deductions.mbt |
+| 学历继续教育400/月、资格继续教育当年3600 | [2026上海税务问答](https://shanghai.chinatax.gov.cn/zcfw/rdwd/202602/t479530.html) | 辅助金额和调用方年度输入 |
 
-- 来源口径：现行个人所得税法及月度换算表（全年一次性奖金）。
-- **年度版本化**：新年度规则 = 新增一个 `annual_table_2027()` 并在入口按
-  `year` 选择；旧表保留，历史重算结果不变。
-- **规则集注入**：两张表 + 基本减除费用 + 版本号打包为 `RuleSet`
-  （`src/rules.mbt`）。`withholding_under(rules, inputs)` 用任意规则集重算，
-  `policy_impact(before, after, inputs)` 直接给出换版前后的逐月增减——
-  试算新政策不需要改引擎，也不需要等发版。
+子女教育、婴幼儿照护、赡养老人标准来源于国务院2023年提高专项附加扣除标准的通知；
+本库辅助结构仅计算已确认资格的金额，不实现家庭全量资格判断或期限管理。
+五城社保参数为合成演示参数，不是当前法定数据；Contribution表达自备的分险种基数和费率。
 
-## 基本减除费用
-
-`BASIC_DEDUCTION` = 5,000 元/月（`src/withholding.mbt`）。若立法调整，改这一个常量并补版本测试。
-
-## 专项附加扣除标准（current cycle）
-
-定义于 `src/special_deductions.mbt`，全部为命名常量：
-
-| 项 | 月度标准 | 上限校验 |
-| --- | --- | --- |
-| 子女教育 | 2,000 元/孩 | — |
-| 3 岁以下婴幼儿 | 2,000 元/孩 | — |
-| 住房贷款利息 | 1,000 元 | 与租房互斥 |
-| 住房租金 | 800 / 1,100 / 1,500 元按城市档 | 档位枚举 |
-| 赡养老人 | 分摊额，合计 ≤3,000 元 | 3,000 元 |
-| 继续教育 | ≤400 元/月 | 400 元（3,600 元年票由调用方均摊） |
-| 大病医疗 | 年度自付超 1.5 万部分，≤80,000 元/年 | 80,000 元 |
-
-## 社保公积金参数（EXAMPLE）
-
-`city_params()` 内置北京/上海/深圳/广州/杭州五个城市的示例参数（基数上下限、
-个人比例）。**这些是量级合理的示例数据，不是当年法定值**——真实使用前必须
-以各市人社部门年度公布值替换。参数是纯数据，替换不需要动引擎。
-
-## 劳务报酬（Labor remuneration）
-
-折算（≤4,000 减 800；>4,000 打八折）与三档预扣率（20/30/40%，速算
-0/2,000/7,000）定义于 `src/labor.mbt`。
-
-## 版本标记
-
-`RULES_VERSION`（`src/tax_table.mbt`）随每份 JSON 报告输出，例如 `"rules":"2026.1"`。
-任何表或常量变更都必须同时递增该版本号，历史归档才能唯一对应到一组规则。
-
-## 变更协议（Change protocol）
-
-1. 修改数据表/常量；
-2. 更新 `docs/SEMANTICS.md` 对应条目；
-3. 新增该规则边界的 ±1 分穷举测试；
-4. 跑 `python tests/oracle.py`——Python 端同步修改后对比；
-5. 版本号 minor +1，CHANGELOG 记录口径来源。
+版本策略：改规则必须改版本号、更新来源和有效期、补固定边界与回归用例后发布新包。
+当前没有多年份自动政策路由；不支持的year拒绝。自定义假设规则必须有自己的版本名，
+不能冒用CN-resident-2026.2。本次0.2修复改变0.1结果，旧结果应按新口径复核。

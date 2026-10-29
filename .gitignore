@@ -5,3 +5,9 @@ node_modules/
 *.core
 *.mi
 examples/months.json.tmp
+
+work/
+deliverables/
+artifacts/
+.mooncakes/
+__pycache__/

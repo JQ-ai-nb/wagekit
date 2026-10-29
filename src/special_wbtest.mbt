@@ -46,8 +46,8 @@ test "monthly total sums every itemised row" {
     housing_rent: 0L,
     elder_support: 300_000L,
     continuing_education: 40_000L,
-    major_medical_monthly: 50_000L,
+    major_medical_monthly: 0L,
   }
-  // 2*2000 + 2000 + 1000 + 3000 + 400 + 500 = 10900 yuan
-  assert_eq(monthly_total(sd), 1_090_000L)
+  // 2*2000 + 2000 + 1000 + 3000 + 400 = 10400 yuan
+  assert_eq(monthly_total(sd), 1_040_000L)
 }

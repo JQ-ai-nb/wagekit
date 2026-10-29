@@ -5,5 +5,7 @@ import {
 pkgtype(kind: "executable")
 
 options(
-  link: { "js": { "exports": [ "run", "run_payslip" ], "format": "esm" } },
+  link: {
+    "js": { "exports": [ "run", "run_payslip", "audit" ], "format": "esm" },
+  },
 )

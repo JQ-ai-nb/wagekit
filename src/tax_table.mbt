@@ -17,7 +17,7 @@ pub(all) struct RateTable {
 /// Rule-set version carried into every report. Bump this whenever a table or
 /// a constant changes, so an archived report can be traced to an exact rule
 /// set (see docs/RULES.md).
-pub const RULES_VERSION : String = "2026.1"
+pub const RULES_VERSION : String = "CN-resident-2026.2"
 
 ///|
 /// Annual comprehensive income table (IIT law, current edition).

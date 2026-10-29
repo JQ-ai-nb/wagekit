@@ -53,5 +53,5 @@ jobs:
       - run: moon run examples/embed --target js
       - run: moon fmt --check
       - run: node scripts/build.mjs
-      - run: node --test tests/cli.test.mjs tests/batch.test.mjs
-      - run: python tests/oracle.py 500
+      - run: node --test tests/cli.test.mjs tests/batch.test.mjs tests/audit.test.mjs
+      - run: python tests/oracle.py 3000

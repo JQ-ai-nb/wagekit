@@ -1,217 +1,125 @@
 # WageKit
 
-**分毫不差的 MoonBit 薪酬个税计算引擎。**
+MoonBit 薪酬计算与差异复核引擎。版本 0.2.0，MIT。
 
-[![CI](https://github.com/JQ-ai-nb/wagekit/actions/workflows/ci.yml/badge.svg)](https://github.com/JQ-ai-nb/wagekit/actions/workflows/ci.yml)
+[CI](https://github.com/JQ-ai-nb/wagekit/actions/workflows/ci.yml) · [Mooncakes](https://mooncakes.io/docs/JQ-ai-nb/wagekit) · [演示](https://jq-ai-nb.github.io/wagekit/web/)
 
-WageKit 把"发工资要算的税"做成可验证的纯计算库：输入任职期间的工资参数（整数分），输出累计预扣预缴的逐月税额、年终奖两种计税方式对比与法定工资条。所有金额都是精确整数运算——**钱永远不经过浮点**。
+为薪酬软件接入、工资预扣复核和计算逻辑回归测试提供同一份 MoonBit 内核。
+输入工资、扣除和实际预扣记录，逐期输出应扣、实扣、差额以及累计计算依据。
+这里的复核是给定范围内的软件计算比对，不等于税务机关认定。
 
-它不是 HR SaaS：不做员工管理、不发工资、不连银行；它是可被任何 MoonBit 程序、云函数或 wasm 宿主直接依赖的计算层。
+## 先跑一个有用的例子
 
-| 30 秒判断 | |
-| --- | --- |
-| 解决什么 | 发工资要算的税：累计预扣跨月跳档、年终奖临界点、到手反推应发、政策换版重算——每一条都直接对上钱 |
-| 谁用 | 招聘算 offer 税前 / 财务查每月预扣依据 / 薪酬系统评估换版成本 / 个人比较年终奖两种计税 |
-| 凭什么信 | 44 项单元测试 + 25 项 Node 测试（CLI 19 + 批量 6） + 3,000 组 Python `Decimal` 独立实现逐字段对照；`moon test` 一条命令跑完，不用装 Python 也能验边界 |
-| 生态位置 | 本包发布前全量检索（2026-10-29）：Mooncakes **3,390 个包**里薪酬/个税类 **0 个**；金额表示只有 `haol-05/moonmoney`，不做计税 |
-| 怎么试 | **先开演示页**（`web/`，零依赖零网络）：五个场景一键切换，每个都有一句"该看什么" |
-
-**先看这个**：打开 `web/index.html`（或在线演示），点「年终奖多发一元」——36,001 元比 36,000 元多缴 2,310.10 元税，到手少 2,309.10 元。再点「到手反推」和「起征点试算」，这两个是普通计算器做不到的方向。
-
-| 能力 | 说明 |
-| --- | --- |
-| 金额 | 全程整数分、四舍五入到分，浮点从不接触钱 |
-| 累计预扣 | 工资薪金累计预扣预缴，跨月状态机，多月跳档正确 |
-| 年终奖 | 单独计税 + 并入综合所得对比择优；6 档临界点全档穷举——跨档点落在 ÷12 商的第 +1 分（即多发 0.12 元），到手少 2,309.89 元 |
-| 专项附加 | 子女教育/婴幼儿/房贷/租房互斥校验/赡养/继续教育/大病医疗，逐项上限 |
-| 社保公积金 | 基数上下限 clamp、逐险种舍入；内置五城示例参数（标注 EXAMPLE） |
-| 其他所得 | 收入类型枚举：劳务报酬（20/30/40%）、稿酬（20%）、特许权使用费（20%），共享 800/80% 费用减除 |
-| 年度汇算 | 应退/应补分列输出；劳务报酬并入口径差产生真实退税场景（JSON `other_income` / `other_prepaid` → `settlement`） |
-| 税后反推 | 给定到手金额求税前应发（`gross_up`）：分段函数求逆，分位台阶上取最小可行解，不可精确命中时报告超出几分 |
-| 税额分解 | 每月预扣追溯到底：第几档、什么税率、速算扣除数多少、完整算式（`explain`） |
-| 规则集注入 | 两张税率表 + 起征点 + 版本号打包为 `RuleSet`，可换一整套规则重算，不改引擎 |
-| 政策影响面 | 同一份工资在旧/新两版规则下逐月对比，输出每人每月增减（`policy_impact`；JSON `preview` 试算起征点） |
-| 工资条 | Markdown 输出：应发、各项扣除、实发、累计口径 |
-| 确定性 | 同一输入产生逐字节相同的 JSON；规则表数据驱动、按年度版本化 |
-
-## 60 秒评审路径
-
-1. **看著名陷阱**：`moon test` 里的 `every cliff jumps at the twelfth fen past its edge` 用例——年终奖 36,000 元缴税 1,080 元，36,001 元缴税 3,390.10 元，**多发一元，到手少 2,309.10 元**（精确跳档点在 36,000.12 元，测试按分穷举 6 档边界）；
-2. **跑独立 oracle**：`python tests/oracle.py 3000`——Python `Decimal` 按官方口径独立实现同一套规则，3,000 组随机工资逐字段对比；
-3. **生成工资条**：`node bin/wagekit.mjs examples/months.json --md`，输出样张见 `examples/expected-output.md`；
-4. 想看与现有项目的关系：本 README「与现有项目的关系」。
-
-## 四种人用它做什么
-
-同一个计算层，四个真实场景，不是四个玩具 demo：
-
-| 谁 | 问题 | 调用 |
-| --- | --- | --- |
-| 招聘 / HR | "offer 写 25,000 到手，税前该开多少？"；"这 1,000 人本月的工资条" | `gross_up` / `bin/batch.mjs` |
-| 财务 | "这个月每个人的预扣为什么是这个数？" | `explain_withholding` / JSON 的 `explain` |
-| 薪酬系统 | "政策换版，全公司要多掏多少钱？" | `policy_impact` |
-| 个人 | "年终奖 36,000 还是 36,001 划算？" | `bonus_compare` |
-
-## 三个完整用例
-
-### 1. 累计预扣的跨月正确性
-
-累计预扣预缴是**期间状态机**：3 月累计应纳税所得额跳档时，当月税额跳升，但全年合计与年度汇算一致。单月函数实现必然算错——这是引擎与"查表算术"的分界线。
-
-### 2. 年终奖临界点
-
-`36,000 → 36,001 元`：单独计税税额 `1,080 → 3,390.10 元`。引擎同时计算并入综合所得的新增税额并择优；6 档跳档点各取「边界 / +11 分 / +12 分」三点穷举，跨档必须在第 12 分发生。
-
-### 3. 劳务报酬并入伍算的退税
-
-劳务 1 万元按 20% 预扣 1,600 元；汇算并入综合所得后按年度税率重算——应退 1,360 元。这是"预扣率 ≠ 年度税率"产生的真实退税。
+MoonBit 0.10.17 / moon 0.1.20261021，Node 22+；Python 3.12+ 用于对照测试。
 
 ```sh
+node scripts/build.mjs
+node bin/audit.mjs examples/audit.csv
+# E001 第3期：应扣 150.00，实扣 300.00，差额 150.00 元
+# 返回 1，便于接入 CI 或工资系统变更前的检查
+node bin/audit.mjs examples/audit-clean.csv
+# 复核一致，返回 0
+node scripts/serve.mjs
+# 打开 http://127.0.0.1:8899；页面中的数据不上传
+```
+
+样例为合成数据。两名员工共四期记录，其中一人收入下降后回升；累计已扣税额
+必须保留，不能把下降后的应纳税额当作已经缴纳的税款。这个场景同时是回归测试。
+
+## 功能和实际用途
+
+| 能力 | 输入与输出 | 使用场景 |
+| --- | --- | --- |
+| 差异复核 | 工资/扣除/实扣历史 → 员工、期数、应扣、实扣、差额、累计依据 | 工资表核对、系统迁移验证 |
+| 累计预扣 | 最多12期正常工资 → 各期预扣和累计应纳 | 薪酬应用嵌入 |
+| 年终奖比较 | 单独计税；完整年度数据下比较并入新增税额 | 年终奖测算 |
+| 居民年度汇算估算 | 年度收入与扣除、模型或提供的预缴额 → 应退/应补 | 软件汇算结果核对 |
+| 首期净额反推 | 固定社保和扣除条件、目标净额 → 最小可行税前 | 首期定薪试算 |
+| 规则对比 | 两套明确的税表和基本减除参数 → 逐期差额 | 参数变更回归 |
+| 金额与社保公式 | 整数分内核；险种独立基数与基点费率 | 精确金额与0.5%等费率表达 |
+
+所有税务算法在 `src/*.mbt`。Node 负责文件读写和 CSV 适配，浏览器使用 MoonBit
+编译的同一 JS 引擎。没有调用远程计税服务；浏览器载入静态程序文件后在本地计算。
+
+## 适用范围
+
+- 内置规则仅支持 **2026 年中国大陆居民个人、同一单位、普通累计预扣方法**。
+- 期数为本单位当年的任职受雇期数，从1连续输入；缺失历史直接报错，不能只拿第三期工资当首期算。
+- 首次取得工资可按累计自然月份扣除、上年收入不超过6万元的简便预扣、跨单位合并、免税/减免税、捐赠、非居民与境外规则暂未实现。
+- 工资及符合条件的扣除金额、其他综合所得的收入额折算、扣除资格和重复申报由调用方确认。
+- 年度计算必须显式设置 `annual_complete:true`，表示已提供全年全部收入及扣除。缺少此声明时，年终奖只输出单独计税试算，`best=needs_annual_data`。
+- 年度基本减除按12个月计算；大病医疗等年度扣除走 `annual_deductions`，不能摊入月度预扣。
+- 单独计税年终奖不包含在当前综合所得汇算输出中。库支持显式并入；调用方不得将同一奖金同时放入工资和附加奖金。
+- `salary_prepaid` 是用户提供的工资已预扣额；省略则使用模型推算，报告标明 `prepaid_source`，不能视为实缴凭证。
+- 各城市社保数据仅为示例。实际费率和各险种基数须由调用方提供并核实。
+
+## CSV 复核接口
+
+列：`employee_id,year,period,gross,social,special,other,actual_withheld`。
+金额为十进制元，最多两位小数；文本按整数转换成分，拒绝指数或多余小数。
+支持 UTF-8 BOM、带引号的逗号、转义引号、CRLF；拒绝重复表头、重复员工期数、
+不连续历史和负金额。最多1000名员工、每人12期、CSV文本4MB。
+
+```sh
+node bin/audit.mjs examples/audit.csv --json
+node bin/audit.mjs examples/audit.csv --tolerance 0.01 --json
+```
+
+退出码：0一致；1存在差异；2输入无效。容差默认0分。每期应扣按
+`max(累计应纳 − 此前实际累计已扣, 0)` 计算；后续正常补扣不会仅因前期少扣而重复误报。
+复核报告保留全部行，避免只给结论而无法复算。
+
+## MoonBit 库与 JSON 接口
+
+```sh
+moon add JQ-ai-nb/wagekit@0.2.0
+moon run examples/embed --target js
 node bin/wagekit.mjs examples/settlement.json
-# {"settlement":{"tax_due":69000,"prepaid":205000,"refund":136000,"payable":0,...}}
+node bin/wagekit.mjs examples/months.json --md
 ```
 
-`other_income` 要传**已按法定比例折算后**的金额（劳务报酬 80%），`other_prepaid` 是这笔钱已经预扣的税。
+包导入路径是 `JQ-ai-nb/wagekit/src`。公共接口示例见 `examples/embed/main.mbt`，
+包括 `cumulative_withholding`、`reconcile`、`bonus_compare_under` 和 `gross_up`。
+JSON 金额必须是无小数、无指数的整数分。浏览器导出 `run`、`run_payslip`、`audit`。
+复核 JSON 结构见 [格式说明](docs/FORMAT.md)。
 
-**减除费用按几个月算，是一个参数，不是引擎替你猜的：**
-
-| `deduction_months` | 含义 | 本例结果 |
-| --- | --- | --- |
-| 省略 | 跟着数据走（给几个月扣几个月），与产生已预扣额的预扣口径一致 | 应缴 690 → **退 1,360** |
-| `12` | 居民个人法定年度减除 60,000 元，即使只给了部分月份 | 应缴 0 → **退 2,050** |
-
-两种情况在完整 12 个月输入下结果相同，所以正常的年度结算不会碰到这个分歧。分期离职、只有部分月份收入时，这个选择值真金白银，所以它是参数。
-
-### 4. 工资条
-
-`render_payslip` 输出 Markdown：应发、三险一金、专项附加、本月预扣、实发、累计口径——可直接进报告与聊天。
-
-### 5. 反推：到手 20,000 该开多少税前
-
-```sh
-cat > /tmp/offer.json <<'JSON'
-{"year":2026,"months":[{"gross":0,"social":0,"special":300000,"other":0}],"target_net":2000000}
-JSON
-node bin/wagekit.mjs /tmp/offer.json
-```
-
-输出 `"gross_up":{"gross":2037113,"net":2000000,"overshoot":0,"exact":true}`——税前 20,371.13 元分毫不差地落到 20,000 元。
-不是解方程：税是分段线性且四舍五入到分，净额曲线有台阶，某些到手额**永远取不到**，所以引擎返回最小可行税前并如实报告超出几分。
-
-### 6. 税额分解：为什么是这个数
-
-同一份输入加 `"explain":true`，每个月都会带出档位、税率、速算扣除数与算式：
-
-```json
-{"month":3,"taxable_cum":6600000,"bracket":2,"rate":10,"quick":252000,
- "tax_cum":408000,"withheld":220000,"formula":"66000.00 × 10% − 2520.00 = 4080.00"}
-```
-
-### 7. 批量：一张表出全员工资条
-
-```sh
-node bin/batch.mjs examples/employees.csv --out payslips
-# 已生成 3 份工资条 → /path/to/payslips
-# 月度预扣个税合计 2836.00 元｜月实发合计 89864.00 元
-# 年终奖按单独计税合计 12870.00 元（是否更省见每份工资条的对比）
-```
-
-CSV 列：`name,gross,social,special,other,bonus`，金额单位是**元**（可带两位小数，超过两位直接报错，不静默截断）。每人生成一份 Markdown 工资条，终端打印合计；`--json` 输出机器可读汇总。
-
-实测 **1,000 人约 0.4 秒**（含生成 1,000 个文件落盘；三次测量 0.35–0.44 秒），单机、无并发。
-
-## 怎么嵌入（一个只用 pub 接口的消费端）
-
-`examples/embed/` 是一个独立包，**只 import `pub` 项、不碰内部实现**，并且由 CI 编译并运行。它能过，说明第三方拿到包就能用；哪天它编译不过，就是真的破坏了别人的构建。
-
-```moonbit
-let inputs : Array[@wagekit.MonthInput] = [
-  { gross: 3_000_000L, social: 300_000L, special: 100_000L, other: 0L },
-]
-let schedule = @wagekit.cumulative_withholding(inputs)          // 逐月预扣
-let why = @wagekit.explain_withholding(rules, inputs)           // 为什么是这个数
-let offer = @wagekit.gross_up(2_000_000L, 300_000L, 0L, 0L)     // 到手反推税前
-let impact = @wagekit.policy_impact(rules, candidate, inputs)    // 换版影响面
-```
-
-```sh
-moon run examples/embed
-# 本月预扣 630.00 元
-# 档位 1：21000.00 × 3% − 0.00 = 630.00
-# 到手 20000.00 元需要税前 23463.92 元（精确）
-# 起征点 6000：全年少扣 30.00 元
-```
-
-依赖方式：`moon add JQ-ai-nb/wagekit`；在同一 module 内则 `import { "JQ-ai-nb/wagekit/src" @wagekit }`。
-
-**外部消费端实测（2026-10-29）**：在一个全新模块里执行 `moon add JQ-ai-nb/wagekit`，只写 5 行代码，`moon run` 直接输出 `预扣 630.00 元 / 到手 2 万需税前 23463.92 元`。依赖取自 **Mooncakes 上的发布版本**，不是本地路径——所以"别人能用"是可复现的，不是自述。
+批量首期工资条：`node bin/batch.mjs examples/employees.csv --out _build/slips`。
+此便捷命令只处理首期，后续工资必须提供完整历史并使用复核接口。
 
 ## 验证
 
 ```sh
-moon check --target all --deny-warn   # 四目标零警告
-moon run examples/embed               # 嵌入示例（只用 pub 接口）
-moon test --deny-warn                 # 单元测试：临界点穷举、状态机不变量、舍入口径、反推往返
+moon check --target all --deny-warn
+moon test --target all --deny-warn
+moon fmt --check
+moon info
 node scripts/build.mjs
-node --test tests/cli.test.mjs tests/batch.test.mjs # 21 pass
-node bin/wagekit.mjs examples/months.json          # JSON 报告
-node bin/wagekit.mjs examples/months.json --md     # 全年工资条（Markdown）
-node bin/wagekit.mjs examples/explain-grossup.json # 税额分解 + 反推
-node bin/wagekit.mjs examples/settlement.json      # 年度汇算：应退 1,360 元
-node bin/wagekit.mjs examples/policy-preview.json  # 起征点改 6,000 的影响面
-python tests/oracle.py 3000           # 独立 Decimal oracle，逐字段对比
+node --test tests/cli.test.mjs tests/batch.test.mjs tests/audit.test.mjs
+python tests/oracle.py 3000
 ```
 
-oracle 的随机流固定覆盖**每一个税率跳档点**（年终奖按月度表边界 ×12，取 `edge×12`、`+11 分`、`+12 分` 三点；年度表边界取单月探针 `±1 分`），边界正确性不靠抽样。`moon test` 里另有同口径的 6 档穷举，评审不装 Python 也能复核。
+Python 使用 Decimal 分段累加计算年度税额，与 MoonBit 的速算扣除实现分开。
+3,000组随机用例加30个固定奖金边界用例对照；两套实现一致只说明已覆盖场景一致，
+不能证明政策适用范围完整。核心测试覆盖预扣下降后恢复、边界1分、完整年度声明、
+实际预缴、年度扣除、分项费率及规则注入。CI在 Linux/macOS/Windows 跑检查、测试、
+构建和公共包示例；远程是否通过以 Actions 的实际结果为准。
 
-CI 在 Linux / macOS / Windows 上以 `--target all`（wasm / wasm-gc / js / native）执行以上全部检查。
+## 同类项目与独立贡献
 
-44 项单元测试 + 25 项 Node 测试（CLI 19 + 批量 6）；每份报告都带 `rules` 字段（当前 `2026.1`），归档结果可追溯到确切的规则集。
+工资个税计算、年终奖比较和反推都有现有实现。本项目不主张算法首创或唯一：
+[TaxCalculatorWeb](https://github.com/WingkySky/TaxCalculatorWeb)、
+[SalaryCalculator](https://github.com/Ignareo/SalaryCalculator) 是功能相关的项目。
 
-## 批量性能（可复现）
+WageKit 的交付重点是 MoonBit 可依赖内核、实际预扣历史复核、逐期证据、
+明确年度完整性与预缴来源、同一内核在库/CLI/浏览器中的复用。
+现阶段没有已证实的生产用户；外部消费示例和合成复核案例是可验证的接入证据。
+旧项目 JoinWitness/Relcore 属数据关系方向，本项目独立实现、无代码复用。
 
-```sh
-node scripts/build.mjs
-node bench/bench.mjs 1000 5
-```
+## 维护与来源
 
-1,000 名员工 × 12 个月，每人一份独立 JSON 文档，5 轮取中位：**18.6 ms**（每人 0.019 ms，每月 1.5 µs），Node 22 / Windows。数据在内存生成，不含磁盘与网络。
+[计算口径](docs/SEMANTICS.md) · [规则来源](docs/RULES.md) ·
+[与同类比较](docs/COMPARISON.md) · [发布说明](CHANGELOG.md)
 
-## 为什么不是 Excel 或在线计算器
-
-| 维度 | Excel / 在线计算器 | WageKit |
-| --- | --- | --- |
-| 口径 | 黑盒公式，改没改不知道 | 每张税率表、每个常量都在 `docs/RULES.md` 里标了位置与来源；`explain` 把每月预扣还原成算式 |
-| 方向 | 只能正向算：税前 → 税后 | 双向：`gross_up` 由到手反推应发，offer 谈薪直接用 |
-| 年度更新 | 等厂商/作者改模板 | 规则是数据，换一个 `RuleSet` 即重算；`policy_impact` 直接给出换版前后的逐月增减 |
-| 可嵌入 | 不能 | MoonBit 库 / JSON wire / Node CLI / wasm 宿主，四种调用 |
-| 可验证 | 靠自己复核 | Python `Decimal` 独立实现做 oracle，3,000 组逐字段对比 |
-| 批量与参数化 | 手工改单元格 | 五城社保参数、任意月数、任意所得组合，一次调用 |
-
-一句话：**计算器给你一个数，WageKit 给你一个可审计、可嵌入、可被另一个实现验证的口径。**
-
-## 与现有项目的关系（主动披露）
-
-| 项目 | 定位 | 与 WageKit 的边界 |
-| --- | --- | --- |
-| Mooncakes 薪酬个税类 | **本包发布前不存在**（2026-10-29 全量检索 3,390 个包，按 payroll/salary/payslip/tax/wage/个税/工资 检索命中 0 个） | 本包即该类第一个 |
-| haol-05/moonmoney | 金额格式化 | 只管"钱的表示"，不管"税怎么算"，无代码复用 |
-| lwmvr/moonbit-fixedincome | 固定收益金融工具 | 与工资个税无关 |
-| structuraBlock/MoonStats | 统计工具 | 无关 |
-| 本人前作 JoinWitness / Relcore | 数据校验 / 关系执行 | 无代码复用、不同赛道，旧项目保留 |
-
-原创实现，MIT；仅依赖 `moonbitlang/core`（Apache-2.0）；税率与速算扣除数按官方口径表驱动、按年度版本化，参数过期是数据问题不是引擎问题。
-
-## AI 辅助说明
-
-本项目在开发过程中使用 AI 辅助：部分测试用例、文档草稿与重构建议由 AI 参与。
-
-- **不由 AI 决定的部分**：税法口径（税率表、速算扣除数、六项专项附加标准）、每个用例的验收数值、以及最终提交的代码，由维护者逐项核对。
-- **不必相信任何一方的说法**：所有结论都能用仓库内的测试与独立 oracle 复现（见「验证」一节），包括"哪个数字是对的"这件事本身。
-
-## 边界（明确不做）
-
-- 不做社保实缴对接、专项附加扣除的申报流程、汇算清缴申报；
-- 各地社保基数上下限首期仅内置五城示例参数（标注 EXAMPLE），按城市扩展是数据工作；
-- 不提供税务建议；计算结果以主管税务机关口径为准；
-- 计算口径（舍入、临界点、并入伍算）固定在 docs/SEMANTICS.md，评审可逐条核对。
+MIT；运行依赖仅 MoonBit 标准库。政策采用公开官方文件，原创代码未移植上述同类项目。
+AI参与了代码修改、测试设计和文档草稿；参赛者须理解范围、运行测试并对最终提交负责。
+本库是计算与复核软件，结果仍须结合实际申报信息核实。

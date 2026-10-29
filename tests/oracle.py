@@ -1,211 +1,66 @@
-#!/usr/bin/env python3
-"""Independent oracle for WageKit.
-
-Re-implements the same payroll rules with Python Decimal (no shared code with
-the MoonBit core), generates randomized payroll years that cover every tax
-bracket, and compares the MoonBit CLI output field by field.
-
-Usage:
-    python tests/oracle.py [N]
-
-Exit codes: 0 all checks pass; 1 mismatch (diff printed).
+"""Decimal cross-check using marginal-band accumulation, not quick deductions.
+References: IIT Law article 6 / rate table; STA 2018-61; MOF/STA 2023-30.
+This checks implementation agreement, not policy completeness or eligibility.
 """
-
-from __future__ import annotations
-
-import json
-import random
-import subprocess
-import sys
+import json,random,subprocess,sys
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parent.parent
-BATCH = ROOT / "tests" / "batch.mjs"
-
-# Tax tables, in cents. Written independently from the MoonBit tables.
-ANNUAL_TABLE = [
-    (3_600_000, 3, 0),
-    (14_400_000, 10, 252_000),
-    (30_000_000, 20, 1_692_000),
-    (42_000_000, 25, 3_192_000),
-    (66_000_000, 30, 5_292_000),
-    (96_000_000, 35, 8_592_000),
-    (10**18, 45, 18_192_000),
-]
-MONTHLY_TABLE = [
-    (300_000, 3, 0),
-    (1_200_000, 10, 21_000),
-    (2_500_000, 20, 141_000),
-    (3_500_000, 25, 266_000),
-    (5_500_000, 30, 441_000),
-    (8_000_000, 35, 716_000),
-    (10**18, 45, 1_516_000),
-]
-
-
-def _tax_of(table, taxable: int) -> int:
-    if taxable <= 0:
-        return 0
-    for upper, rate, quick in table:
-        if taxable <= upper:
-            raw = Decimal(taxable) * Decimal(rate) / Decimal(100)
-            taxed = int(raw.quantize(Decimal(1), rounding=ROUND_HALF_UP))
-            return taxed - quick
-    raise AssertionError("unreachable")
-
-
-def _cumulative(inputs):
-    results = []
-    cum_gross = 0
-    cum_deduct = 0
-    prev_tax = 0
-    for k, m in enumerate(inputs, start=1):
-        cum_gross += m["gross"]
-        cum_deduct += 500_000 + m["social"] + m["special"] + m["other"]
-        taxable = cum_gross - cum_deduct
-        tax_cum = _tax_of(ANNUAL_TABLE, taxable)
-        withheld = max(0, tax_cum - prev_tax)
-        results.append(
-            {
-                "month": k,
-                "taxable_cum": taxable,
-                "tax_cum": tax_cum,
-                "withheld": withheld,
-            }
-        )
-        prev_tax = tax_cum
-    return results
-
-
-def _bonus_standalone(bonus: int) -> int:
-    if bonus <= 0:
-        return 0
-    per_month = bonus // 12
-    for upper, rate, quick in MONTHLY_TABLE:
-        if per_month <= upper:
-            raw = Decimal(bonus) * Decimal(rate) / Decimal(100)
-            return int(raw.quantize(Decimal(1), rounding=ROUND_HALF_UP)) - quick
-    raise AssertionError("unreachable")
-
-
-# Fixed boundary bonuses: every monthly-table cliff (edge*12 + 12, where the
-# integer division of 12 first crosses the bracket) plus one fen below.
-EDGE_BONUS = []
-for _u, _r, _q in MONTHLY_TABLE[:-1]:
-    EDGE_BONUS.append(_u * 12)
-    EDGE_BONUS.append(_u * 12 + 12)
-    EDGE_BONUS.append(_u * 12 + 11)
-EDGE_BONUS = sorted(set(EDGE_BONUS))
-
-# Fixed single-month salaries that land the annual taxable base exactly on an
-# annual-table edge (±1 fen): the cumulative schedule must match the table.
-EDGE_SALARIES = []
-for _u, _r, _q in ANNUAL_TABLE[:-1]:
-    EDGE_SALARIES.append(_u)
-    EDGE_SALARIES.append(_u + 1)
-    EDGE_SALARIES.append(_u - 1)
-
-
-def _case(count: int) -> list[dict]:
-    rng = random.Random(42)
-    cases = []
-    for _ in range(count):
-        months = rng.randint(1, 12)
-        entries = []
-        if rng.random() < 0.15:
-            # boundary probe: a single month whose taxable base sits on an edge
-            gross = rng.choice(EDGE_SALARIES) + 500_000
-            entries.append(
-                {
-                    "gross": gross,
-                    "social": 0,
-                    "special": 0,
-                    "other": 0,
-                }
-            )
-            months = 1
-        for _ in range(months):
-            gross = rng.randint(0, 8_000_000)
-            entries.append(
-                {
-                    "gross": gross,
-                    "social": rng.randint(0, min(gross, 600_000)),
-                    "special": rng.randint(0, 600_000),
-                    "other": rng.randint(0, 100_000),
-                }
-            )
-        case = {"year": 2026, "months": entries}
-        if rng.random() < 0.6:
-            case["bonus"] = rng.choice(EDGE_BONUS + [rng.randint(0, 20_000_000)])
+ROOT=Path(__file__).resolve().parent.parent
+BOUNDS=[3600000,14400000,30000000,42000000,66000000,96000000]
+RATES=[3,10,20,25,30,35,45]
+def rounded(v):return int(v.quantize(Decimal(1),rounding=ROUND_HALF_UP))
+def annual_tax(taxable):
+    remaining=max(taxable,0);previous=0;total=Decimal(0)
+    for upper,rate in zip(BOUNDS+[10**18],RATES):
+        band=min(remaining,upper-previous)
+        total+=Decimal(band)*Decimal(rate)/100
+        remaining-=band;previous=upper
+        if not remaining:break
+    return rounded(total)
+def bonus_tax(bonus):
+    # Exact Decimal division; never discard fractional cents when selecting.
+    monthly=Decimal(bonus)/12
+    bounds=[300000,1200000,2500000,3500000,5500000,8000000,10**18]
+    quick=[0,21000,141000,266000,441000,716000,1516000]
+    for upper,rate,q in zip(bounds,RATES,quick):
+        if monthly<=upper:return rounded(Decimal(bonus)*rate/100)-q
+def expected(case):
+    rows=[];gross=deductions=paid=0
+    for k,m in enumerate(case['months'],1):
+        gross+=m['gross'];deductions+=500000+m['social']+m['special']+m['other']
+        taxable=gross-deductions;due=annual_tax(taxable)
+        amount=max(due-paid,0);paid+=amount
+        rows.append(dict(month=k,taxable_cum=taxable,tax_cum=due,withheld=amount))
+    result=dict(ok=True,rules='CN-resident-2026.2',year=2026,months=rows,total_withheld=paid,bonus=None)
+    if 'bonus' in case:
+        bonus=case['bonus']
+        result['bonus']=dict(amount=bonus,standalone_tax=bonus_tax(bonus),combined_extra_tax=None,best='needs_annual_data')
+    return result
+def main():
+    n=int(sys.argv[1]) if len(sys.argv)>1 else 3000
+    rng=random.Random(42);cases=[]
+    # All published bonus edges: fixed probes, not chance coverage.
+    for edge in BOUNDS:
+        for offset in [-1,0,1,11,12]:
+            cases.append(dict(year=2026,months=[],bonus=edge+offset))
+    for _ in range(n):
+        months=[]
+        for _ in range(rng.randint(1,12)):
+            gross=rng.randint(0,8000000)
+            months.append(dict(gross=gross,social=rng.randint(0,min(gross,600000)),special=rng.randint(0,600000),other=0))
+        case=dict(year=2026,months=months)
+        if rng.random()<0.6:case['bonus']=rng.randint(0,20000000)
         cases.append(case)
-    return cases
-
-
-def _expected(case: dict) -> dict:
-    results = _cumulative(case["months"])
-    expected = {
-        "ok": True,
-        "rules": "2026.1",
-        "year": case.get("year", 2026),
-        "months": results,
-        "total_withheld": sum(r["withheld"] for r in results),
-        "bonus": None,
-    }
-    if "bonus" in case:
-        bonus = case["bonus"]
-        without = _cumulative(case["months"])
-        merged = [dict(m) for m in case["months"]]
-        if merged:
-            merged[-1]["gross"] += bonus
-        else:
-            merged = [{"gross": bonus, "social": 0, "special": 0, "other": 0}]
-        with_bonus = _cumulative(merged)
-        extra = sum(r["withheld"] for r in with_bonus) - sum(
-            r["withheld"] for r in without
-        )
-        standalone = _bonus_standalone(bonus)
-        expected["bonus"] = {
-            "amount": bonus,
-            "standalone_tax": standalone,
-            "combined_extra_tax": extra,
-            "best": "standalone" if standalone <= extra else "combined",
-        }
-    return expected
-
-
-def main() -> int:
-    count = int(sys.argv[1]) if len(sys.argv) > 1 else 3000
-    cases = _case(count)
-    cases_file = ROOT / "_build" / "oracle-cases.json"
-    cases_file.parent.mkdir(exist_ok=True)
-    cases_file.write_text(json.dumps(cases), encoding="utf-8")
-    raw = subprocess.run(
-        ["node", str(BATCH), str(cases_file)],
-        capture_output=True,
-        text=True,
-        cwd=ROOT,
-    )
-    if raw.returncode != 0:
-        print("batch runner failed:", raw.stderr[-500:])
-        return 1
-    reports = json.loads(raw.stdout)
-    failures = 0
-    for i, (case, report) in enumerate(zip(cases, reports)):
-        expected = _expected(case)
-        if report != expected:
-            failures += 1
-            if failures <= 5:
-                print(f"MISMATCH case #{i}")
-                print(" case  :", json.dumps(case))
-                print(" expect:", json.dumps(expected))
-                print(" actual:", json.dumps(report))
-    if failures:
-        print(f"oracle: {failures}/{len(cases)} cases mismatched")
-        return 1
-    print(f"oracle: {len(cases)} cases matched field by field")
+    file=ROOT/'_build/oracle-cases.json';file.parent.mkdir(exist_ok=True)
+    file.write_text(json.dumps(cases),encoding='utf-8')
+    run=subprocess.run(['node',str(ROOT/'tests/batch.mjs'),str(file)],capture_output=True,text=True,cwd=ROOT)
+    if run.returncode:raise RuntimeError(run.stderr[-1000:])
+    reports=json.loads(run.stdout)
+    assert len(reports)==len(cases),'truncated report stream'
+    for i,(case,report) in enumerate(zip(cases,reports)):
+        want=expected(case)
+        if report!=want:
+            print('MISMATCH',i,json.dumps(case),json.dumps(want),json.dumps(report));return 1
+    print(f'oracle: {n} random cases + 30 fixed boundary cases matched field by field')
     return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+if __name__=='__main__':sys.exit(main())

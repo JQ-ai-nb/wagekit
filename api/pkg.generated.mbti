@@ -2,6 +2,8 @@
 package "JQ-ai-nb/wagekit/api"
 
 // Values
+pub fn audit(String) -> String
+
 pub fn run(String) -> String
 
 pub fn run_payslip(String) -> String

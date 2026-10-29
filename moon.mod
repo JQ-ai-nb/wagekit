@@ -1,6 +1,6 @@
 name = "JQ-ai-nb/wagekit"
 
-version = "0.1.0"
+version = "0.2.0"
 
 readme = "README.md"
 
@@ -8,7 +8,7 @@ repository = "https://github.com/JQ-ai-nb/wagekit"
 
 license = "MIT"
 
-description = "Payroll and individual income tax engine for MoonBit: cumulative withholding, annual bonus traps, penny-exact money, auditable per-month breakdowns, and net-to-gross inversion."
+description = "Resident payroll calculation and withholding reconciliation in MoonBit: exact cents, annual bonus comparison, traceable rules and offline CSV audits."
 
 keywords = [ "payroll", "tax", "salary", "finance", "china" ]
 
