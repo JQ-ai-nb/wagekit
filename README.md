@@ -142,7 +142,9 @@ moon run examples/embed
 # 起征点 6000：全年少扣 30.00 元
 ```
 
-依赖方式：发布后 `moon add JQ-ai-nb/wagekit`；在同一 module 内则 `import { "JQ-ai-nb/wagekit/src" @wagekit }`。
+依赖方式：`moon add JQ-ai-nb/wagekit`；在同一 module 内则 `import { "JQ-ai-nb/wagekit/src" @wagekit }`。
+
+**外部消费端实测（2026-10-29）**：在一个全新模块里执行 `moon add JQ-ai-nb/wagekit`，只写 5 行代码，`moon run` 直接输出 `预扣 630.00 元 / 到手 2 万需税前 23463.92 元`。依赖取自 **Mooncakes 上的发布版本**，不是本地路径——所以"别人能用"是可复现的，不是自述。
 
 ## 验证
 
