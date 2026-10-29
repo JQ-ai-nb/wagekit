@@ -460,7 +460,7 @@ function _M0DTPC16result6ResultGRP312JQ_2dai_2dnb7wagekit3src9WireInputRP312JQ_2
   this._0 = param0;
 }
 _M0DTPC16result6ResultGRP312JQ_2dai_2dnb7wagekit3src9WireInputRP312JQ_2dai_2dnb7wagekit3src8TaxErrorE2Ok.prototype.$tag = 1;
-function _M0TP312JQ_2dai_2dnb7wagekit3src9WireInput(param0, param1, param2, param3, param4, param5, param6, param7) {
+function _M0TP312JQ_2dai_2dnb7wagekit3src9WireInput(param0, param1, param2, param3, param4, param5, param6, param7, param8) {
   this.year = param0;
   this.inputs = param1;
   this.bonus = param2;
@@ -469,6 +469,7 @@ function _M0TP312JQ_2dai_2dnb7wagekit3src9WireInput(param0, param1, param2, para
   this.other_income = param5;
   this.other_prepaid = param6;
   this.preview_basic = param7;
+  this.deduction_months = param8;
 }
 function _M0TP312JQ_2dai_2dnb7wagekit3src11BonusChoice(param0, param1, param2) {
   this.standalone_tax = param0;
@@ -617,7 +618,7 @@ const _M0FPB4seed = _M0FPB12random__seed();
 const _M0FPC28internal7strconv17parse__scientificN8exp__numS471 = 0n;
 const _M0FPC28internal7strconv17check__underscoreN25_2atransition__table__222S574 = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 5, 5, 5, 5, 5, 0, 1, 2, 5];
 const _M0FPC28internal7strconv15parse__inf__nanN25_2atransition__table__304S550 = [14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 3, 4, 14, 14, 14, 14, 14, 14, 14, 7, 14, 14, 14, 14, 5, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 6, 14, 14, 14, 0, 14, 14, 14, 14, 14, 14, 14, 14, 14, 8, 14, 14, 14, 14, 14, 1, 14, 14, 9, 14, 14, 14, 14, 14, 14, 14, 14, 10, 14, 14, 14, 14, 14, 14, 11, 14, 14, 14, 14, 14, 14, 14, 14, 14, 12, 14, 14, 14, 14, 14, 14, 14, 14, 13, 14, 1, 14, 14, 14, 14, 14, 14, 14];
-const _M0FP312JQ_2dai_2dnb7wagekit3src11run__reportN6recordS1360 = new _M0TP312JQ_2dai_2dnb7wagekit3src10MonthInput(0n, 0n, 0n, 0n);
+const _M0FP312JQ_2dai_2dnb7wagekit3src11run__reportN6recordS1368 = new _M0TP312JQ_2dai_2dnb7wagekit3src10MonthInput(0n, 0n, 0n, 0n);
 function _M0FPB13consume4__acc(acc, input) {
   const _p = (acc >>> 0) + ((Math.imul(input, -1028477379) | 0) >>> 0) | 0;
   const _p$2 = 17;
@@ -4876,7 +4877,33 @@ function _M0FP312JQ_2dai_2dnb7wagekit3src12parse__input(source) {
       return _bind$13;
     }
   }
-  return new _M0DTPC16result6ResultGRP312JQ_2dai_2dnb7wagekit3src9WireInputRP312JQ_2dai_2dnb7wagekit3src8TaxErrorE2Ok(new _M0TP312JQ_2dai_2dnb7wagekit3src9WireInput(year, inputs, bonus, explain, target_net, other_income, other_prepaid, preview_basic));
+  const _bind$12 = _M0MPB3Map3getGsRPB4JsonE(fields, "deduction_months");
+  let deduction_months;
+  if (_bind$12 === undefined) {
+    deduction_months = undefined;
+  } else {
+    const _Some = _bind$12;
+    const _value = _Some;
+    const _bind$13 = _M0FP312JQ_2dai_2dnb7wagekit3src6j__int(_value, "deduction_months");
+    let months;
+    if (_bind$13.$tag === 1) {
+      const _ok = _bind$13;
+      months = _ok._0;
+    } else {
+      return _bind$13;
+    }
+    if (months < 1 || months > 12) {
+      const _bind$14 = _M0FP312JQ_2dai_2dnb7wagekit3src4failGuE("deduction_months must be within 1..12");
+      if (_bind$14.$tag === 1) {
+        const _ok = _bind$14;
+        _ok._0;
+      } else {
+        return _bind$14;
+      }
+    }
+    deduction_months = months;
+  }
+  return new _M0DTPC16result6ResultGRP312JQ_2dai_2dnb7wagekit3src9WireInputRP312JQ_2dai_2dnb7wagekit3src8TaxErrorE2Ok(new _M0TP312JQ_2dai_2dnb7wagekit3src9WireInput(year, inputs, bonus, explain, target_net, other_income, other_prepaid, preview_basic, deduction_months));
 }
 function _M0FP312JQ_2dai_2dnb7wagekit3src17bonus__standalone(bonus) {
   if (BigInt.asIntN(64, bonus) <= BigInt.asIntN(64, 0n)) {
@@ -5133,10 +5160,17 @@ function _M0FP312JQ_2dai_2dnb7wagekit3src20run__payslip__report(source) {
   }
   return new _M0DTPC16result6ResultGsRP312JQ_2dai_2dnb7wagekit3src8TaxErrorE2Ok(buf.val);
 }
-function _M0FP312JQ_2dai_2dnb7wagekit3src18annual__settlement(inputs, bonus, bonus_merged, other_income, other_prepaid) {
+function _M0FP312JQ_2dai_2dnb7wagekit3src18annual__settlement(inputs, bonus, bonus_merged, other_income, other_prepaid, deduction_months) {
   const results = _M0FP312JQ_2dai_2dnb7wagekit3src23cumulative__withholding(inputs);
   const prepaid = BigInt.asUintN(64, _M0FP312JQ_2dai_2dnb7wagekit3src15total__withheld(results) + other_prepaid);
-  const months = inputs.length;
+  let months;
+  if (deduction_months === undefined) {
+    months = inputs.length;
+  } else {
+    const _Some = deduction_months;
+    const _m = _Some;
+    months = _m < 0 ? 0 : _m;
+  }
   let comprehensive = 0n;
   let deductions = 0n;
   const _bind = inputs.length;
@@ -5361,7 +5395,7 @@ function _M0FP312JQ_2dai_2dnb7wagekit3src11run__report(source) {
   } else {
     const _Some = _bind$4;
     const _target = _Some;
-    const profile = inputs.length > 0 ? _M0MPC15array5Array2atGRP312JQ_2dai_2dnb7wagekit3src10MonthInputE(inputs, 0) : _M0FP312JQ_2dai_2dnb7wagekit3src11run__reportN6recordS1360;
+    const profile = inputs.length > 0 ? _M0MPC15array5Array2atGRP312JQ_2dai_2dnb7wagekit3src10MonthInputE(inputs, 0) : _M0FP312JQ_2dai_2dnb7wagekit3src11run__reportN6recordS1368;
     const g = _M0FP312JQ_2dai_2dnb7wagekit3src9gross__up(_target, profile.social, profile.special, profile.other);
     const _string_builder$2 = _M0MPB13StringBuilder21StringBuilder_2einner(65);
     _M0IPB13StringBuilderPB6Logger13write__string(_string_builder$2, ",\"gross_up\":{\"target_net\":");
@@ -5411,7 +5445,15 @@ function _M0FP312JQ_2dai_2dnb7wagekit3src11run__report(source) {
       const _Some = prepaid;
       paid = _Some;
     }
-    const s = _M0FP312JQ_2dai_2dnb7wagekit3src18annual__settlement(inputs, 0n, false, other, paid);
+    const _bind$5 = input.deduction_months;
+    let s;
+    if (_bind$5 === undefined) {
+      s = _M0FP312JQ_2dai_2dnb7wagekit3src18annual__settlement(inputs, 0n, false, other, paid, undefined);
+    } else {
+      const _Some = _bind$5;
+      const _months = _Some;
+      s = _M0FP312JQ_2dai_2dnb7wagekit3src18annual__settlement(inputs, 0n, false, other, paid, _months);
+    }
     const _string_builder$2 = _M0MPB13StringBuilder21StringBuilder_2einner(74);
     _M0IPB13StringBuilderPB6Logger13write__string(_string_builder$2, ",\"settlement\":{\"tax_due\":");
     _M0MPB13StringBuilder13write__objectGlE(_string_builder$2, s.tax_due);

@@ -154,6 +154,14 @@
     <pre id="slip" style="background:#f6f8fa;color:var(--ink)">—</pre>
   </div>
 
+  <div class="card">
+    <h2 style="margin-top:0">年终奖六档临界点（全表）</h2>
+    <p class="hint" style="margin-top:0">
+      每一档的边界、越线后的税额、以及多领 0.12 元到手的损失。数字由本页引擎现场算出，不是抄来的表。
+    </p>
+    <div id="cliffs" class="tablewrap"><p class="hint">计算中…</p></div>
+  </div>
+
   <div class="card cliff">
     <h2>为什么这个库存在</h2>
     <p>
@@ -168,6 +176,46 @@
 <script type="module">
 const yuan = (cents) => (cents / 100).toLocaleString("zh-CN", {minimumFractionDigits: 2});
 const toCents = (id) => Math.round(Number(document.getElementById(id).value || "0") * 100);
+let corePromise = null;
+const getCore = () => (corePromise ??= import("./wagekit.js"));
+
+// Single-amount bonus tax, straight from the engine (no re-implementation here).
+async function bonusTaxCents(bonusCents) {
+  const core = await getCore();
+  const report = JSON.parse(core.run(JSON.stringify({year: 2026, months: [], bonus: bonusCents})));
+  return report.ok ? report.bonus.standalone_tax : 0;
+}
+
+async function renderCliffs() {
+  const edges = [36000, 144000, 300000, 420000, 660000, 960000];
+  const rows = [];
+  for (const edge of edges) {
+    const at = Math.round(edge * 100);
+    const over = at + 12; // the quotient crosses at the twelfth fen
+    const taxAt = await bonusTaxCents(at);
+    const taxOver = await bonusTaxCents(over);
+    const drop = (at - taxAt) - (over - taxOver);
+    rows.push({edge, taxAt, taxOver, drop});
+  }
+  const head =
+    "<table><thead><tr><th>临界点（元）</th><th>边界税额</th><th>多 0.12 元后</th><th>到手少</th></tr></thead><tbody>";
+  const body = rows
+    .map(
+      (r) =>
+        `<tr><td class="mono">${r.edge.toLocaleString("zh-CN")}</td>` +
+        `<td class="mono">${yuan(r.taxAt)}</td>` +
+        `<td class="mono">${yuan(r.taxOver)}</td>` +
+        `<td class="mono" style="color:var(--warn)">−${yuan(r.drop)}</td></tr>`,
+    )
+    .join("");
+  document.getElementById("cliffs").innerHTML = head + body + "</tbody></table>";
+}
+
+// Never leave the card stuck on "计算中…" if the module fails to load.
+renderCliffs().catch((err) => {
+  document.getElementById("cliffs").innerHTML =
+    '<p class="hint" style="color:var(--warn)">引擎未加载：' + err.message + "</p>";
+});
 
 const PRESETS = {
   cliff: {
@@ -319,6 +367,7 @@ async function runReport() {
 
 document.getElementById("go").addEventListener("click", runReport);
 applyPreset("cliff");
+renderCliffs();
 </script>
 </body>
 </html>
