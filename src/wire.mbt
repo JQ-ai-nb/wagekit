@@ -64,7 +64,14 @@ fn j_cents(value : Json, what : String) -> Int64 raise TaxError {
 ///|
 fn j_int(value : Json, what : String) -> Int32 raise TaxError {
   match value {
-    Number(n, ..) => {
+    Number(n, repr~) => {
+      match repr {
+        Some(text) =>
+          if text.contains(".") || text.contains("e") || text.contains("E") {
+            fail("expected a plain integer for " + what)
+          }
+        None => ()
+      }
       let i = n.to_int()
       if i.to_double() != n {
         fail("expected an integer for " + what)
@@ -103,8 +110,32 @@ fn required(fields : Map[String, Json], name : String) -> Json raise TaxError {
 }
 
 ///|
+/// Reject misspellings and unsupported tax fields instead of silently
+/// producing a result that does not account for them.
+fn ensure_fields(
+  fields : Map[String, Json],
+  allowed : Array[String],
+  context : String,
+) -> Unit raise TaxError {
+  let mut unknown : String? = None
+  for key, _ in fields {
+    if !allowed.contains(key) {
+      match unknown {
+        None => unknown = Some(key)
+        Some(previous) => if key < previous { unknown = Some(key) }
+      }
+    }
+  }
+  match unknown {
+    Some(key) => fail(context + " contains unknown field: " + key)
+    None => ()
+  }
+}
+
+///|
 fn read_month(value : Json) -> MonthInput raise TaxError {
   let fields = j_obj(value, "month entry")
+  ensure_fields(fields, ["gross", "social", "special", "other"], "month entry")
   let input = {
     gross: j_cents(required(fields, "gross"), "gross"),
     social: j_cents(required(fields, "social"), "social"),
@@ -142,12 +173,12 @@ pub(all) struct WireInput {
   other_prepaid : Int64?
   /// Ask what a different monthly basic deduction would do to this payroll.
   preview_basic : Int64?
-  /// Basic-deduction months for the settlement figure; omitted = follow the
-  /// number of months supplied.
+  /// Legacy compatibility: only 12 months are accepted for residents.
   deduction_months : Int32?
   annual_complete : Bool
   annual_deductions : Int64
   salary_prepaid : Int64?
+  bonus_merged : Bool
 } derive(Eq)
 
 ///|
@@ -164,6 +195,15 @@ fn parse_input(source : String) -> WireInput raise TaxError {
     _ => fail("input is not valid JSON")
   }
   let fields = j_obj(document, "input")
+  ensure_fields(
+    fields,
+    [
+      "year", "months", "bonus", "explain", "target_net", "other_income", "other_prepaid",
+      "preview", "deduction_months", "annual_complete", "annual_deductions", "salary_prepaid",
+      "bonus_merged",
+    ],
+    "input",
+  )
   let year = match fields.get("year") {
     Some(value) => j_int(value, "year")
     None => 2026
@@ -204,7 +244,11 @@ fn parse_input(source : String) -> WireInput raise TaxError {
   let other_income = opt_cents(fields, "other_income")
   let other_prepaid = opt_cents(fields, "other_prepaid")
   let preview_basic = match fields.get("preview") {
-    Some(value) => opt_cents(j_obj(value, "preview"), "basic_deduction")
+    Some(value) => {
+      let preview = j_obj(value, "preview")
+      ensure_fields(preview, ["basic_deduction"], "preview")
+      opt_cents(preview, "basic_deduction")
+    }
     None => None
   }
   let deduction_months = match fields.get("deduction_months") {
@@ -227,16 +271,36 @@ fn parse_input(source : String) -> WireInput raise TaxError {
     None => 0L
   }
   let salary_prepaid = opt_cents(fields, "salary_prepaid")
+  let bonus_merged = match fields.get("bonus_merged") {
+    Some(True) => true
+    Some(False) | None => false
+    _ => fail("bonus_merged must be a boolean")
+  }
   if !annual_complete &&
     (
       other_income is Some(_) ||
       other_prepaid is Some(_) ||
       annual_deductions > 0L ||
       salary_prepaid is Some(_) ||
-      deduction_months is Some(_)
+      deduction_months is Some(_) ||
+      bonus_merged
     ) {
     fail(
       "annual_complete=true is required for annual settlement; supply all annual income and deductions",
+    )
+  }
+  if (other_income is Some(_) && other_prepaid is None) ||
+    (other_income is None && other_prepaid is Some(_)) {
+    fail(
+      "other_income and other_prepaid must be supplied together; use zero when appropriate",
+    )
+  }
+  if bonus_merged && bonus is None {
+    fail("bonus_merged requires a separate bonus amount")
+  }
+  if bonus_merged && salary_prepaid is None {
+    fail(
+      "bonus_merged requires salary_prepaid, including tax already withheld on the bonus",
     )
   }
   {
@@ -252,6 +316,7 @@ fn parse_input(source : String) -> WireInput raise TaxError {
     annual_complete,
     annual_deductions,
     salary_prepaid,
+    bonus_merged,
   }
 }
 
@@ -403,17 +468,25 @@ pub fn run_report(source : String) -> String raise TaxError {
     } else {
       "modeled"
     }
+    let merged_bonus = if input.bonus_merged {
+      match input.bonus {
+        Some(amount) => amount
+        None => 0L
+      }
+    } else {
+      0L
+    }
     let s = annual_settlement(
       inputs,
-      0L,
-      false,
+      merged_bonus,
+      input.bonus_merged,
       other,
       paid,
       salary_prepaid=salary_paid,
       annual_deductions=input.annual_deductions,
     )
     buf.write_string(
-      ",\"settlement\":{\"tax_due\":\{s.tax_due},\"prepaid\":\{s.prepaid},\"refund\":\{s.refund},\"payable\":\{s.payable},\"bonus_merged\":false,\"prepaid_source\":\"\{source}\"}",
+      ",\"settlement\":{\"tax_due\":\{s.tax_due},\"prepaid\":\{s.prepaid},\"refund\":\{s.refund},\"payable\":\{s.payable},\"bonus_merged\":\{s.bonus_merged},\"prepaid_source\":\"\{source}\"}",
     )
   }
   // What a different monthly basic deduction would do to this payroll.

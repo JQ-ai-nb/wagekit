@@ -1,0 +1,228 @@
+[
+  {
+    "id": "official-withholding-example",
+    "title": "工资累计预扣首月示例",
+    "source": "https://guangdong.chinatax.gov.cn/gdsw/czsw_dmtxc/2019-08/21/content_69a9e51091954bbaa3a0328860678485.shtml",
+    "source_detail": "2019 年公开案例中的首月，按 2026 年相同税率表和基本减除常量复算；扣除资格由使用者确认。",
+    "input": {
+      "year": 2026,
+      "months": [
+        {
+          "gross": 1000000,
+          "social": 150000,
+          "special": 100000,
+          "other": 0
+        }
+      ]
+    },
+    "expected": {
+      "withheld": [
+        7500
+      ],
+      "total_withheld": 7500
+    }
+  },
+  {
+    "id": "official-bonus-example",
+    "title": "全年奖金两种计税方式示例",
+    "source": "https://www.chinatax.gov.cn/chinatax/n810219/n810744/n3752930/c101627/c5147704/5147704/files/936a47c7c6ee4048947fc8db145cd86b.pdf",
+    "source_detail": "国家税务总局 2020 年问答第 18–19 页的 2019 年例子；按照 2026 年相同的税率表、基本减除和现行奖金政策复算。示例不声称引擎支持历史年份。",
+    "input": {
+      "year": 2026,
+      "months": [
+        {
+          "gross": 1000000,
+          "social": 0,
+          "special": 100000,
+          "other": 0
+        },
+        {
+          "gross": 1000000,
+          "social": 0,
+          "special": 100000,
+          "other": 0
+        },
+        {
+          "gross": 1000000,
+          "social": 0,
+          "special": 100000,
+          "other": 0
+        },
+        {
+          "gross": 1000000,
+          "social": 0,
+          "special": 100000,
+          "other": 0
+        },
+        {
+          "gross": 1000000,
+          "social": 0,
+          "special": 100000,
+          "other": 0
+        },
+        {
+          "gross": 1000000,
+          "social": 0,
+          "special": 100000,
+          "other": 0
+        },
+        {
+          "gross": 1000000,
+          "social": 0,
+          "special": 100000,
+          "other": 0
+        },
+        {
+          "gross": 1000000,
+          "social": 0,
+          "special": 100000,
+          "other": 0
+        },
+        {
+          "gross": 1000000,
+          "social": 0,
+          "special": 100000,
+          "other": 0
+        },
+        {
+          "gross": 1000000,
+          "social": 0,
+          "special": 100000,
+          "other": 0
+        },
+        {
+          "gross": 1000000,
+          "social": 0,
+          "special": 100000,
+          "other": 0
+        },
+        {
+          "gross": 1000000,
+          "social": 0,
+          "special": 100000,
+          "other": 0
+        }
+      ],
+      "annual_complete": true,
+      "bonus": 4800000,
+      "bonus_merged": true,
+      "salary_prepaid": 687000
+    },
+    "expected": {
+      "total_withheld": 228000,
+      "bonus": {
+        "amount": 4800000,
+        "standalone_tax": 459000,
+        "combined_extra_tax": 480000,
+        "best": "standalone"
+      },
+      "settlement": {
+        "tax_due": 708000,
+        "prepaid": 687000,
+        "refund": 0,
+        "payable": 21000,
+        "bonus_merged": true,
+        "prepaid_source": "provided"
+      }
+    }
+  },
+  {
+    "id": "official-annual-example",
+    "title": "全年综合所得汇算示例",
+    "source": "https://www.chinatax.gov.cn/chinatax/n810219/n810744/n3752930/c101627/c5147704/5147704/files/936a47c7c6ee4048947fc8db145cd86b.pdf",
+    "source_detail": "国家税务总局 2020 年问答第 12–14 页的 2019 年例子；全年工资与扣除均摊到12期，工资预扣648元、其他所得预扣6960元，与原案例预缴合计7608元一致；在2026年相同税率表及减除常量下复算。",
+    "input": {
+      "year": 2026,
+      "months": [
+        {
+          "gross": 1200000,
+          "social": 300000,
+          "special": 220000,
+          "other": 0
+        },
+        {
+          "gross": 1200000,
+          "social": 300000,
+          "special": 220000,
+          "other": 0
+        },
+        {
+          "gross": 1200000,
+          "social": 300000,
+          "special": 220000,
+          "other": 0
+        },
+        {
+          "gross": 1200000,
+          "social": 300000,
+          "special": 220000,
+          "other": 0
+        },
+        {
+          "gross": 1200000,
+          "social": 300000,
+          "special": 220000,
+          "other": 0
+        },
+        {
+          "gross": 1200000,
+          "social": 300000,
+          "special": 220000,
+          "other": 0
+        },
+        {
+          "gross": 1200000,
+          "social": 300000,
+          "special": 220000,
+          "other": 0
+        },
+        {
+          "gross": 1200000,
+          "social": 300000,
+          "special": 220000,
+          "other": 0
+        },
+        {
+          "gross": 1200000,
+          "social": 300000,
+          "special": 220000,
+          "other": 0
+        },
+        {
+          "gross": 1200000,
+          "social": 300000,
+          "special": 220000,
+          "other": 0
+        },
+        {
+          "gross": 1200000,
+          "social": 300000,
+          "special": 220000,
+          "other": 0
+        },
+        {
+          "gross": 1200000,
+          "social": 300000,
+          "special": 220000,
+          "other": 0
+        }
+      ],
+      "annual_complete": true,
+      "other_income": 3480000,
+      "other_prepaid": 696000,
+      "salary_prepaid": 64800
+    },
+    "expected": {
+      "total_withheld": 64800,
+      "settlement": {
+        "tax_due": 312000,
+        "prepaid": 760800,
+        "refund": 448800,
+        "payable": 0,
+        "bonus_merged": false,
+        "prepaid_source": "provided"
+      }
+    }
+  }
+]
+

@@ -1,6 +1,6 @@
 # WageKit
 
-MoonBit 薪酬计算与差异复核引擎。版本 0.2.1，MIT。
+MoonBit 薪酬计算与差异复核引擎。版本 0.3.0，MIT。
 
 [CI](https://github.com/JQ-ai-nb/wagekit/actions/workflows/ci.yml) · [Mooncakes](https://mooncakes.io/docs/JQ-ai-nb/wagekit) · [演示](https://jq-ai-nb.github.io/wagekit/web/)
 
@@ -19,6 +19,8 @@ node bin/audit.mjs examples/audit.csv
 # 返回 1，便于接入 CI 或工资系统变更前的检查
 node bin/audit.mjs examples/audit-clean.csv
 # 复核一致，返回 0
+node bin/audit.mjs examples/audit-zh.csv
+# 也支持规定的中文表头，仍报告同一条150元差异
 node scripts/serve.mjs
 # 打开 http://127.0.0.1:8899；页面中的数据不上传
 ```
@@ -49,16 +51,18 @@ node scripts/serve.mjs
 - 工资及符合条件的扣除金额、其他综合所得的收入额折算、扣除资格和重复申报由调用方确认。
 - 年度计算必须显式设置 `annual_complete:true`，表示已提供全年全部收入及扣除。缺少此声明时，年终奖只输出单独计税试算，`best=needs_annual_data`。
 - 年度基本减除按12个月计算；大病医疗等年度扣除走 `annual_deductions`，不能摊入月度预扣。
-- 单独计税年终奖不包含在当前综合所得汇算输出中。库支持显式并入；调用方不得将同一奖金同时放入工资和附加奖金。
+- 年终奖默认不并入综合所得汇算；需要并入时，显式传入 `bonus_merged:true` 和 `salary_prepaid`（包含工资及该奖金已预扣额）。工资输入不能重复包含该笔奖金。
 - `salary_prepaid` 是用户提供的工资已预扣额；省略则使用模型推算，报告标明 `prepaid_source`，不能视为实缴凭证。
+- `other_income` 和 `other_prepaid` 必须同时提供，可为零；未识别的 JSON 字段和复核 CSV 列会报错，不会静默忽略。
 - 各城市社保数据仅为示例。实际费率和各险种基数须由调用方提供并核实。
 
 ## CSV 复核接口
 
 列：`employee_id,year,period,gross,social,special,other,actual_withheld`。
+等价中文列：`员工编号,年份,期次,应发工资,个人社保公积金,专项附加扣除,其他计税扣除,实扣个税`。
 金额为十进制元，最多两位小数；文本按整数转换成分，拒绝指数或多余小数。
 支持 UTF-8 BOM、带引号的逗号、转义引号、CRLF；拒绝重复表头、重复员工期数、
-不连续历史和负金额。最多1000名员工、每人12期、CSV文本4MB。
+不连续历史、未知列和负金额。最多1000名员工、每人12期、CSV文本上限400万字符；浏览器上传文件上限4MB。
 
 ```sh
 node bin/audit.mjs examples/audit.csv --json
@@ -72,7 +76,7 @@ node bin/audit.mjs examples/audit.csv --tolerance 0.01 --json
 ## MoonBit 库与 JSON 接口
 
 ```sh
-moon add JQ-ai-nb/wagekit@0.2.1
+moon add JQ-ai-nb/wagekit@0.3.0
 moon run examples/embed --target js
 node bin/wagekit.mjs examples/settlement.json
 node bin/wagekit.mjs examples/months.json --md
@@ -94,7 +98,7 @@ moon test --target all --deny-warn
 moon fmt --check
 moon info
 node scripts/build.mjs
-node --test tests/cli.test.mjs tests/batch.test.mjs tests/audit.test.mjs
+node --test tests/cli.test.mjs tests/batch.test.mjs tests/audit.test.mjs tests/official.test.mjs
 python tests/oracle.py 3000
 ```
 
@@ -103,6 +107,9 @@ Python 使用 Decimal 分段累加计算年度税额，与 MoonBit 的速算扣�
 不能证明政策适用范围完整。核心测试覆盖预扣下降后恢复、边界1分、完整年度声明、
 实际预缴、年度扣除、分项费率及规则注入。CI在 Linux/macOS/Windows 跑检查、测试、
 构建和公共包示例；远程是否通过以 Actions 的实际结果为准。
+
+另有三组[税务机关公开示例对照](docs/OFFICIAL_EXAMPLES.md)，注明原文来源、历史年份及复算假设，
+分别验证普通工资、年终奖比较和年度综合所得公式。它们不是税务机关对本软件的认证。
 
 ## 同类项目与独立贡献
 

@@ -49,3 +49,35 @@ test('annual-only data requires an explicit complete-year declaration',()=>{
 test('unsupported past and future years are rejected',()=>{
  for(const year of [2020,2027,2030])assert.equal(JSON.parse(run(JSON.stringify({year,months:[]}))).ok,false);
 });
+test('unsupported columns are rejected rather than silently ignored',()=>{
+ const csv='employee_id,year,period,gross,social,special,other,actual_withheld,tax_exempt\nA,2026,1,15000,0,0,0,300,1000';
+ assert.throws(()=>auditDocument(csv),/unsupported CSV column: tax_exempt/);
+});
+test('Chinese payroll headers map to the same audit fields',()=>{
+ const zh='员工编号,年份,期次,应发工资,个人社保公积金,专项附加扣除,其他计税扣除,实扣个税\nE001,2026,1,15000,0,0,0,300';
+ const r=JSON.parse(audit(JSON.stringify(auditDocument(zh))));
+ assert.equal(r.passed,true);assert.equal(r.rows[0].expected,30000);
+ const duplicate=zh.replace('员工编号,年份','员工编号,employee_id,年份').replace('E001,2026','E001,E001,2026');
+ assert.throws(()=>auditDocument(duplicate),/duplicate CSV header/);
+});
+test('year uses a plain integer token without float-rounding ambiguity',()=>{
+ assert.equal(JSON.parse(run('{"year":2026.00000000000001,"months":[]}')).ok,false);
+});
+test('unknown JSON fields in audit and employee records are rejected',()=>{
+ const employee={employee_id:'A',months:[{gross:100,social:0,special:0,other:0}],actual_withheld:[0]};
+ assert.match(JSON.parse(audit(JSON.stringify({year:2026,employees:[employee],tolrance:2}))).error,/unknown field: tolrance/);
+ assert.match(JSON.parse(audit(JSON.stringify({year:2026,employees:[{...employee,exemption:2}]}))).error,/unknown field: exemption/);
+});
+test('merged bonus settlement uses declared total prepaid and includes bonus once',()=>{
+ const months=Array.from({length:12},()=>({gross:1000000,social:0,special:100000,other:0}));
+ const data={year:2026,months,annual_complete:true,bonus:4800000,bonus_merged:true,salary_prepaid:687000};
+ const r=JSON.parse(run(JSON.stringify(data)));
+ assert.equal(r.ok,true);assert.equal(r.settlement.bonus_merged,true);
+ assert.equal(r.settlement.tax_due,708000);assert.equal(r.settlement.prepaid,687000);assert.equal(r.settlement.payable,21000);
+ assert.equal(r.bonus.standalone_tax,459000);assert.equal(r.bonus.combined_extra_tax,480000);
+});
+test('combined bonus settlement rejects missing prepaid wages and bonus',()=>{
+ const d={year:2026,months:[],annual_complete:true,bonus:4800000,bonus_merged:true};
+ assert.match(JSON.parse(run(JSON.stringify(d))).error,/requires salary_prepaid/);
+ assert.match(JSON.parse(run(JSON.stringify({...d,bonus:undefined,salary_prepaid:0}))).error,/requires a separate bonus/);
+});

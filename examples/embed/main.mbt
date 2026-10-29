@@ -1,9 +1,7 @@
 ///|
 /// A consumer built the way a third party would build one: it imports the
-/// package and touches nothing but `pub` items. If this compiles, the public
-/// surface is enough to run payroll; if it stops compiling, the API broke
-/// someone else's build, which is the only definition of a breaking change
-/// that matters here.
+/// package and touches nothing but `pub` items. This example exercises the
+/// public calculation and reconciliation APIs from a separate package.
 ///
 /// Run it with `moon run examples/embed`.
 fn main {
@@ -48,4 +46,31 @@ fn main {
     @wagekit.yuan_text(-impact.total_delta) +
     " 元",
   )
+
+  // Reconcile actual prior withholding, including an income drop and recovery.
+  let history : Array[@wagekit.MonthInput] = [
+    { gross: 1_500_000L, social: 0L, special: 0L, other: 0L, },
+    { gross: 0L, social: 0L, special: 0L, other: 0L, },
+    { gross: 1_500_000L, social: 0L, special: 0L, other: 0L, },
+  ]
+  let records : Array[@wagekit.PayrollLedger] = [
+    {
+      employee_id: "E001",
+      inputs: history,
+      actual_withheld: [30_000L, 0L, 30_000L],
+    },
+  ]
+  let audit = @wagekit.reconcile(rules, records) catch {
+    _ => abort("invalid payroll example")
+  }
+  if audit.differences != 1 || audit.rows[2].delta != 15_000L {
+    abort("unexpected audit result")
+  }
+  println("第三期差额 " + @wagekit.yuan_text(audit.rows[2].delta) + " 元")
+
+  // Assume complete annual data before comparing bonus treatments.
+  let choice = @wagekit.bonus_compare_under(rules, 3_600_000L, [
+    { gross: 2_000_000L, social: 0L, special: 0L, other: 0L, },
+  ])
+  println("完整年度示例奖金方案：" + choice.best)
 }

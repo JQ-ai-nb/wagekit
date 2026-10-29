@@ -4,13 +4,14 @@
 <style>
 :root{font-family:"Microsoft YaHei","Segoe UI",sans-serif;color:#172738;background:#f3f6fa;line-height:1.65}body{margin:0}main{max-width:1060px;margin:auto;padding:32px 20px}header{border-bottom:1px solid #cbd6df;margin-bottom:24px;padding-bottom:20px}h1{margin:0;font-size:30px}h2{margin-top:0;font-size:21px}p{margin:10px 0}.tag{font-size:13px;color:#52677a}.card{background:white;border:1px solid #d9e2ea;border-radius:12px;padding:24px;margin-bottom:22px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}button{background:#edf3f8;border:1px solid #b8cad9;border-radius:6px;padding:9px 14px;color:#173a57;cursor:pointer;font:inherit}button.primary{background:#175e7e;color:white;border-color:#175e7e}button:disabled{opacity:.5;cursor:wait}textarea{box-sizing:border-box;width:100%;font:13px/1.7 Consolas,monospace;padding:14px;border:1px solid #afc1cf;border-radius:6px;resize:vertical}label{display:block}input[type=file]{margin:10px 0}.scroll{overflow:auto}table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:14px}th,td{border-bottom:1px solid #e2e8ef;padding:10px;text-align:right}th:first-child,td:first-child{text-align:left}.bad{background:#fff1ed;color:#9d2d16}.good{color:#175b42}.status{font-size:18px;font-weight:600;min-height:32px}.hint{font-size:13px;color:#576a7c}pre{background:#f5f7fa;padding:14px;white-space:pre-wrap;overflow:auto;border-radius:6px;font:13px/1.7 Consolas,monospace}details{margin:12px 0}a{color:#175e7e}footer{font-size:13px;color:#576a7c}
 </style></head><body><main>
-<header><div class="tag">WageKit 0.2 · 本地计算 · 合成数据演示</div><h1>工资预扣差异复核</h1><p>导入工资和实扣记录，逐期核对差额，并保留可复算的依据。</p><div class="hint">适用：2026 年中国大陆居民个人、同一单位的普通累计预扣。须提供从首个任职受雇期开始的连续历史；特殊减免或其他扣缴方法须另行核实。页面读取静态程序文件，输入的工资数据不上传。</div></header>
+<header><div class="tag">WageKit 0.3 · 本地计算 · 合成数据演示</div><h1>工资预扣差异复核</h1><p>导入工资和实扣记录，逐期核对差额，并保留可复算的依据。</p><div class="hint">适用：2026 年中国大陆居民个人、同一单位的普通累计预扣。须提供从首个任职受雇期开始的连续历史；特殊减免或其他扣缴方法须另行核实。页面读取静态程序文件，输入的工资数据不上传。</div></header>
 <section class="card" aria-labelledby="audit-title"><h2 id="audit-title">1. 复核工资表</h2>
-<p class="hint">示例中 E001 三期应发为 15,000、0、15,000 元。第三期记录实扣 300 元，复核可发现多扣 150 元。CSV 金额单位为元；period 表示本单位第几期任职受雇记录。</p>
-<div class="actions"><button id="bad-sample">有差异样例</button><button id="good-sample">修正后样例</button><button class="primary" id="audit-go">开始复核</button></div>
+<p class="hint">示例中 E001 三期应发为 15,000、0、15,000 元。第三期记录实扣 300 元，复核可发现多扣 150 元。支持规定的中英文 CSV 表头，金额单位为元；期次表示本单位第几期任职受雇记录。</p>
+<details><summary>查看中文表头</summary><p class="hint">员工编号、年份、期次、应发工资、个人社保公积金、专项附加扣除、其他计税扣除、实扣个税。请按模板整理，多余列会提示错误。</p></details>
+<div class="actions"><button id="bad-sample">有差异样例</button><button id="good-sample">修正后样例</button><button id="zh-sample">中文表头样例</button><button class="primary" id="audit-go">开始复核</button></div>
 <label for="csv">工资记录 CSV</label><textarea id="csv" rows="7" spellcheck="false"></textarea>
 <label class="hint">或选择本机 CSV 文件 <input type="file" id="csv-file" accept=".csv,text/csv"></label>
-<div id="audit-status" class="status" role="status"></div><div id="audit-table" class="scroll"></div>
+<div id="audit-status" class="status" role="status"></div><p id="audit-summary" class="hint"></p><div id="audit-table" class="scroll"></div>
 <details><summary>查看完整复核证据（整数分）</summary><pre id="audit-json"></pre></details>
 </section>
 <section class="card" aria-labelledby="calc-title"><h2 id="calc-title">2. 计算与回归试算</h2>

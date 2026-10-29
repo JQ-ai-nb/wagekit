@@ -145,6 +145,7 @@ pub fn run_audit_report(source : String) -> String raise TaxError {
     _ => fail("input is not valid JSON")
   }
   let fields = j_obj(doc, "audit input")
+  ensure_fields(fields, ["year", "employees", "tolerance"], "audit input")
   let year = j_int(required(fields, "year"), "year")
   if year != 2026 {
     fail("only year 2026 is supported by the bundled rules")
@@ -152,6 +153,11 @@ pub fn run_audit_report(source : String) -> String raise TaxError {
   let people = j_array(required(fields, "employees"), "employees")
   let ledgers = people.map(value => {
     let fields = j_obj(value, "employee")
+    ensure_fields(
+      fields,
+      ["employee_id", "months", "actual_withheld"],
+      "employee",
+    )
     let id = match required(fields, "employee_id") {
       String(s) => s
       _ => fail("employee_id must be a string")

@@ -15,7 +15,7 @@ try{
   else if(args[i]==='--json')json=true;
   else throw new Error('unknown argument: '+args[i]);
  }
- const source=table(readFileSync(args[0],'utf8'),['name','gross','social','special','other']);
+ const source=table(readFileSync(args[0],'utf8'),['name','gross','social','special','other'],['name','gross','social','special','other','bonus']);
  if(source.length>1000)throw new Error('at most 1000 employees');
  // Validate every row before any slip is written.
  const prepared=source.map((row,i)=>{

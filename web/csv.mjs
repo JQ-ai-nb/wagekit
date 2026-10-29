@@ -37,12 +37,19 @@ export function toCents(raw, field = 'amount', line = 0) {
   return Number(cents);
 }
 
-export function table(source, required) {
+export function table(source, required, allowed = null, aliases = {}) {
   const rows = parseCsv(source);
   if (rows.length < 2) throw new Error('CSV needs a header row and at least one employee');
-  const header = rows.shift().map(x => x.trim().toLowerCase());
+  const header = rows.shift().map(x => {
+    const key = x.trim().toLowerCase();
+    return Object.hasOwn(aliases, key) ? aliases[key] : key;
+  });
   if (new Set(header).size !== header.length) throw new Error('duplicate CSV header');
   for (const name of required) if (!header.includes(name)) throw new Error('missing column: ' + name);
+  if (allowed) {
+    const extra = header.filter(name => !allowed.includes(name)).sort();
+    if (extra.length) throw new Error('unsupported CSV column: ' + extra[0]);
+  }
   return rows.map((cells, i) => {
     if (cells.length !== header.length) throw new Error('line ' + (i + 2) + ': wrong column count');
     return Object.fromEntries(header.map((h, j) => [h, cells[j]]));
@@ -50,7 +57,10 @@ export function table(source, required) {
 }
 
 export function auditDocument(source, tolerance = 0) {
-  const rows = table(source, ['employee_id','year','period','gross','social','special','other','actual_withheld']);
+  const columns = ['employee_id','year','period','gross','social','special','other','actual_withheld'];
+  const aliases = {'员工编号':'employee_id','年份':'year','期次':'period','应发工资':'gross',
+    '个人社保公积金':'social','专项附加扣除':'special','其他计税扣除':'other','实扣个税':'actual_withheld'};
+  const rows = table(source, columns, columns, aliases);
   const people = new Map();
   for (const [i, row] of rows.entries()) {
     if (row.year.trim() !== '2026') throw new Error('only year 2026 is supported');

@@ -256,6 +256,7 @@ pub(all) struct WireInput {
   annual_complete : Bool
   annual_deductions : Int64
   salary_prepaid : Int64?
+  bonus_merged : Bool
 } derive(Eq)
 
 pub(all) struct YearSummary {
