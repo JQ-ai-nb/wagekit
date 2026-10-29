@@ -118,7 +118,7 @@ node bin/batch.mjs examples/employees.csv --out payslips
 
 CSV 列：`name,gross,social,special,other,bonus`，金额单位是**元**（可带两位小数，超过两位直接报错，不静默截断）。每人生成一份 Markdown 工资条，终端打印合计；`--json` 输出机器可读汇总。
 
-实测 **1,000 人 0.44 秒**（含生成 1,000 个文件落盘），单机、无并发。
+实测 **1,000 人约 0.4 秒**（含生成 1,000 个文件落盘；三次测量 0.35–0.44 秒），单机、无并发。
 
 ## 怎么嵌入（一个只用 pub 接口的消费端）
 
