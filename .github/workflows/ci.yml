@@ -14,10 +14,10 @@ concurrency:
 
 jobs:
   verify:
-    # Pinned so a toolchain release cannot turn the badge red between now and
-    # the submission deadline. Bump deliberately, together with the core.
+    # Use the official published channel and record the installed versions.
+    # A moon CLI date is not a downloadable SDK release identifier.
     env:
-      MOONBIT_INSTALL_VERSION: 0.1.20261021
+      MOONBIT_INSTALL_VERSION: latest
     strategy:
       fail-fast: false
       matrix:
