@@ -62,3 +62,35 @@ test "standalone bonus leaves the settlement untouched" {
   assert_eq(settlement.payable, 0L)
   assert_eq(settlement.bonus_merged, false)
 }
+
+///|
+test "the deduction basis is a choice, and it is worth real money" {
+  // One month of salary plus labor income: the two conventions disagree.
+  let inputs = [{ gross: 2_000_000L, social: 0L, special: 0L, other: 0L, }]
+  let other = 800_000L
+  let prepaid = labor_withhold(1_000_000L)
+  // Follow the data (one month -> 5 000 deducted): 23 000 taxable, 690 due.
+  let prorated = annual_settlement(inputs, 0L, false, other, prepaid)
+  assert_eq(prorated.tax_due, 69_000L)
+  assert_eq(prorated.refund, 136_000L)
+  // Statutory resident year (60 000 deducted): nothing taxable, 2 050 back.
+  let statutory = annual_settlement(
+    inputs,
+    0L,
+    false,
+    other,
+    prepaid,
+    deduction_months=12,
+  )
+  assert_eq(statutory.tax_due, 0L)
+  assert_eq(statutory.refund, 205_000L)
+  // Both agree once a full year is supplied, which is the normal case.
+  let full = []
+  for _i in 0..<12 {
+    full.push({ gross: 2_000_000L, social: 0L, special: 0L, other: 0L, })
+  }
+  let a = annual_settlement(full, 0L, false, 0L, 0L)
+  let b = annual_settlement(full, 0L, false, 0L, 0L, deduction_months=12)
+  assert_eq(a.tax_due, b.tax_due)
+  assert_eq(a.refund, b.refund)
+}

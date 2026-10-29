@@ -135,6 +135,9 @@ pub(all) struct WireInput {
   other_prepaid : Int64?
   /// Ask what a different monthly basic deduction would do to this payroll.
   preview_basic : Int64?
+  /// Basic-deduction months for the settlement figure; omitted = follow the
+  /// number of months supplied.
+  deduction_months : Int32?
 } derive(Eq)
 
 ///|
@@ -191,6 +194,16 @@ fn parse_input(source : String) -> WireInput raise TaxError {
     Some(value) => opt_cents(j_obj(value, "preview"), "basic_deduction")
     None => None
   }
+  let deduction_months = match fields.get("deduction_months") {
+    Some(value) => {
+      let months = j_int(value, "deduction_months")
+      if months < 1 || months > 12 {
+        fail("deduction_months must be within 1..12")
+      }
+      Some(months)
+    }
+    None => None
+  }
   {
     year,
     inputs,
@@ -200,6 +213,7 @@ fn parse_input(source : String) -> WireInput raise TaxError {
     other_income,
     other_prepaid,
     preview_basic,
+    deduction_months,
   }
 }
 
@@ -307,7 +321,18 @@ pub fn run_report(source : String) -> String raise TaxError {
         Some(v) => v
         None => 0L
       }
-      let s = annual_settlement(inputs, 0L, false, other, paid)
+      let s = match input.deduction_months {
+        Some(months) =>
+          annual_settlement(
+            inputs,
+            0L,
+            false,
+            other,
+            paid,
+            deduction_months=months,
+          )
+        None => annual_settlement(inputs, 0L, false, other, paid)
+      }
       buf.write_string(
         ",\"settlement\":{\"tax_due\":\{s.tax_due},\"prepaid\":\{s.prepaid},\"refund\":\{s.refund},\"payable\":\{s.payable},\"bonus_merged\":\{s.bonus_merged}}",
       )

@@ -20,7 +20,7 @@ pub const MAX_AMOUNT : Int64 = 1_000_000_000_000
 
 pub const RULES_VERSION : String = "2026.1"
 
-pub fn annual_settlement(Array[MonthInput], Int64, Bool, Int64, Int64) -> Settlement
+pub fn annual_settlement(Array[MonthInput], Int64, Bool, Int64, Int64, deduction_months? : Int32) -> Settlement
 
 pub fn annual_table() -> RateTable
 
@@ -203,6 +203,7 @@ pub(all) struct WireInput {
   other_income : Int64?
   other_prepaid : Int64?
   preview_basic : Int64?
+  deduction_months : Int32?
 } derive(Eq)
 
 pub(all) struct YearSummary {

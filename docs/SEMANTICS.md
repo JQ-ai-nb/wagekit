@@ -60,11 +60,29 @@ Brackets on the taxable amount: 20% to 20k yuan; 30% (quick 2000) to 50k yuan;
 
 ```
 taxable_annual = Σ gross + other_income + [bonus if merged]
-                 − 5000 × N − Σ social − Σ special − Σ other
+                 − 5000 × D − Σ social − Σ special − Σ other
 tax_due        = tax_of(annual_table, taxable_annual)
 prepaid        = Σ withheld + other_prepaid
 refund/payable = prepaid − tax_due     (reported separately, never a sign)
 ```
+
+**`D` is the deduction basis, and it is a parameter, not a guess.** It decides
+how many months of the 5 000 yuan basic deduction the figure is entitled to:
+
+| `deduction_months` | `D` | When it is right |
+| --- | --- | --- |
+| omitted | number of months supplied | Full year in (12 in → 12 deducted), or an in-year departure settled on the months actually worked. Keeps the settlement consistent with the withholding that produced `prepaid`. |
+| `12` | 12 (60 000 yuan) | A resident individual's statutory annual deduction, even when only part of the year's income is supplied. |
+
+The two differ by real money on partial-year input, so the engine refuses to
+pick silently. Example, one month of 20 000 salary plus 10 000 labor income
+(8 000 after the 80% inclusion, 1 600 prepaid):
+
+- follow the data (`D = 1`): taxable 23 000 → 690 due → **refund 1 360**
+- statutory year (`D = 12`): taxable −32 000 → 0 due → **refund 2 050**
+
+With a full year supplied both give the same answer, which is why the default
+never surprises a normal annual run.
 
 - **Other comprehensive income** (labor remuneration, royalties, author's fees)
   arrives already reduced to its statutory inclusion rate (80% for labor) and

@@ -161,3 +161,19 @@ test('the documented ceiling is inclusive',()=>{
   assert.equal(result.status,0);
   assert.equal(JSON.parse(result.stdout).ok,true);
 });
+
+test('deduction_months switches between the two settlement conventions',()=>{
+  const base={year:2026,months:[{gross:2000000,social:0,special:0,other:0}],other_income:800000,other_prepaid:160000};
+  const prorated=JSON.parse(run(base).stdout).settlement;
+  const statutory=JSON.parse(run({...base,deduction_months:12}).stdout).settlement;
+  assert.equal(prorated.tax_due,69000);
+  assert.equal(prorated.refund,136000);
+  assert.equal(statutory.tax_due,0);
+  assert.equal(statutory.refund,205000);
+});
+
+test('deduction_months outside 1..12 is rejected',()=>{
+  const result=run({year:2026,months:[],deduction_months:13});
+  assert.equal(result.status,2);
+  assert.match(JSON.parse(result.stdout).error,/1\.\.12/);
+});

@@ -18,21 +18,40 @@ pub(all) struct Settlement {
 } derive(Eq)
 
 ///|
-/// Reconcile a full year from the raw monthly components — the authoritative
-/// path. `bonus_merged` decides whether the bonus is already part of the
-/// monthly inputs (true) or taxed standalone outside this figure (false; the
-/// standalone tax must then be settled separately and is NOT part of the
-/// refund/payable calculation here).
+/// Reconcile a year from the raw monthly components — the authoritative path.
+/// `bonus_merged` decides whether the bonus is already part of the monthly
+/// inputs (true) or taxed standalone outside this figure (false; the standalone
+/// tax must then be settled separately and is NOT part of the refund/payable
+/// calculation here).
+///
+/// `deduction_months` decides how many months of basic deduction this figure
+/// is entitled to:
+///
+/// - omitted — follow the data: N months supplied means N months deducted.
+///   This keeps the settlement consistent with the withholding that produced
+///   `prepaid`, and is the right choice for a full year (12 in, 12 deducted)
+///   or for an in-year departure settled on the months actually worked.
+/// - `12` — the resident individual's statutory 60 000 yuan/year, even when
+///   fewer months of income are supplied. Use this for a true annual
+///   reconciliation of someone who was a resident all year but only had
+///   partial income.
+///
+/// The two differ by real money, so the convention is a parameter rather than
+/// something the engine decides silently.
 pub fn annual_settlement(
   inputs : Array[MonthInput],
   bonus : Int64,
   bonus_merged : Bool,
   other_income : Int64,
   other_prepaid : Int64,
+  deduction_months? : Int32,
 ) -> Settlement {
   let results = cumulative_withholding(inputs)
   let prepaid = total_withheld(results) + other_prepaid
-  let months = inputs.length()
+  let months = match deduction_months {
+    Some(m) => if m < 0 { 0 } else { m }
+    None => inputs.length()
+  }
   let mut comprehensive = 0L
   let mut deductions = 0L
   for input in inputs {
